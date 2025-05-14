@@ -42,5 +42,6 @@ class TestSuiteKentallsTau(unittest.TestCase):
         tau = kendalls_tau([scores1, scores2])
         self.assertEqual(tau, 0.7222222222222222)
 
+
 if __name__ == "__main__":
     unittest.main()
