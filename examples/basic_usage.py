@@ -29,9 +29,18 @@ def main():
     
     print(f"Anomaly scores range: [{scores.min():.3f}, {scores.max():.3f}]")
     
-    # Evaluate with Mass-Volume curve
+    # Evaluate with combined EM/MV scores
+    print("\n=== EM/MV Scores ===")
+    em_score, mv_score = labelfree.emmv_scores(
+        scores, X,
+        random_state=42,
+        scoring_function=lambda x: -detector.score_samples(x)
+    )
+    print(f"Excess Mass score: {em_score:.4f} (higher is better)")
+    print(f"Mass Volume score: {mv_score:.4f} (lower is better)")
+    
+    # Also show individual curves
     print("\n=== Mass-Volume Curve ===")
-    # For proper evaluation, provide the scoring function
     mv_result = labelfree.mass_volume_curve(
         scores, X, 
         n_thresholds=50, 

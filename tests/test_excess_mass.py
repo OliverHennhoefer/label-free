@@ -18,17 +18,17 @@ class TestExcessMass:
         volume_scores = np.random.randn(1000)
         
         # Compute EM curve
-        result = excess_mass_curve(scores, volume_scores, n_levels=50)
+        result = excess_mass_curve(scores, volume_scores)
         
         # Check output
-        assert set(result.keys()) == {'levels', 'excess_mass', 'auc', 'max_em'}
-        assert len(result['levels']) == 50
-        assert len(result['excess_mass']) == 50
+        assert set(result.keys()) == {'t', 'em', 'auc', 'amax'}
+        assert len(result['t']) > 0  # Length depends on volume_support
+        assert len(result['em']) == len(result['t'])
         assert isinstance(result['auc'], float)
-        assert isinstance(result['max_em'], float)
+        assert isinstance(result['amax'], (int, np.integer))
         
-        # Check that max_em is actually the maximum
-        assert result['max_em'] == pytest.approx(result['excess_mass'].max())
+        # Check that first EM value is 1.0
+        assert result['em'][0] == 1.0
     
     def test_edge_cases(self):
         """Test edge cases."""
@@ -39,7 +39,8 @@ class TestExcessMass:
         result = excess_mass_curve(scores, volume_scores)
         
         # Should still run without errors
-        assert result['max_em'] >= 0
+        assert result['auc'] >= 0
+        assert result['em'][0] == 1.0
         
         # Empty volume scores
         with pytest.raises(ValueError):

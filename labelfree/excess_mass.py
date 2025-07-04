@@ -7,8 +7,8 @@ from .utils import validate_scores, compute_auc
 def excess_mass_curve(
     scores: np.ndarray,
     volume_scores: np.ndarray,
-    n_levels: int = 100,
-    volume: float = 1.0
+    volume_support: float = 1.0,
+    t_max: float = 0.9
 ) -> Dict[str, np.ndarray]:
     """
     Compute Excess-Mass curve for anomaly detection evaluation.
@@ -23,54 +23,57 @@ def excess_mass_curve(
         Anomaly scores on actual data.
     volume_scores : array-like of shape (n_uniform_samples,)
         Anomaly scores on uniform samples (for volume estimation).
-    n_levels : int, default=100
-        Number of levels to evaluate.
-    volume : float, default=1.0
-        Total volume of the data space.
+    volume_support : float, default=1.0
+        Total volume of the data space support.
+    t_max : float, default=0.9
+        Maximum level value for AUC computation.
         
     Returns
     -------
     dict with keys:
-        - 'levels': Level values t
-        - 'excess_mass': EM values at each level
-        - 'auc': Area under EM curve (higher is better)
-        - 'max_em': Maximum excess mass achieved
+        - 't': Level values
+        - 'em': EM values at each level
+        - 'auc': Area under EM curve up to t_max
+        - 'amax': Index where EM <= t_max
     """
     scores = validate_scores(scores)
     volume_scores = validate_scores(volume_scores, "volume_scores")
     
-    # Generate levels
-    levels = np.linspace(0, 100.0 / volume, n_levels)
+    n_samples = len(scores)
+    n_generated = len(volume_scores)
+    
+    # Generate levels t following reference implementation
+    # t = np.arange(0, 100 / volume_support, 0.01 / volume_support)
+    t = np.arange(0, 100 / volume_support, 0.01 / volume_support)
     
     # Find unique score thresholds from data
-    unique_thresholds = np.unique(scores)
+    scores_unique = np.unique(scores)
     
-    # Compute excess mass for each level
-    excess_masses = np.zeros(n_levels)
+    # Initialize EM array following reference
+    em = np.zeros(len(t))
+    em[0] = 1.0
     
-    for i, level in enumerate(levels):
-        # Find optimal threshold for this level
-        max_em = -np.inf
-        
-        for threshold in unique_thresholds:
-            # P(score > threshold) on data
-            p_data = (scores > threshold).mean()
-            
-            # P(score > threshold) on uniform
-            p_uniform = (volume_scores > threshold).mean()
-            
-            # Excess mass at this threshold and level
-            em = p_data - level * p_uniform * volume
-            max_em = max(max_em, em)
-        
-        excess_masses[i] = max_em
+    # Compute excess mass following reference implementation
+    for u in scores_unique:
+        # Vectorized computation over all t values
+        em = np.maximum(em, 
+                       (scores > u).sum() / n_samples - 
+                       t * (volume_scores > u).sum() / n_generated * volume_support)
     
-    # Area under curve
-    auc = compute_auc(levels, excess_masses)
+    # Find amax: index where EM first drops below or equals t_max
+    # This follows the reference implementation exactly
+    amax = np.argmax(em <= t_max) + 1
+    if amax == 1:
+        # Failed to achieve t_max (EM never drops below t_max)
+        # Use full range in this case
+        amax = len(t)
+    
+    # Compute AUC
+    auc = compute_auc(t[:amax], em[:amax])
     
     return {
-        'levels': levels,
-        'excess_mass': excess_masses,
+        't': t,
+        'em': em,
         'auc': auc,
-        'max_em': excess_masses.max()
+        'amax': amax
     }

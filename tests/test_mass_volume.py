@@ -6,7 +6,11 @@ from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
 
 
 class TestMassVolume:
-    """Test suite for Mass-Volume curve."""
+    """Test suite for Mass-Volume curve.
+    
+    Note: The implementation follows Goix et al. where mass values
+    represent target alpha levels from 0 to 1, not decreasing thresholds.
+    """
     
     def test_basic_functionality(self):
         """Test basic MV curve computation."""
@@ -18,22 +22,26 @@ class TestMassVolume:
         result = mass_volume_curve(scores, X, n_thresholds=50, n_mc_samples=1000)
         
         # Check output structure
-        assert set(result.keys()) == {'mass', 'volume', 'auc', 'thresholds'}
+        assert set(result.keys()) == {'mass', 'volume', 'auc', 'axis_alpha'}
         assert len(result['mass']) == 50
         assert len(result['volume']) == 50
-        assert len(result['thresholds']) == 50
+        assert len(result['axis_alpha']) == 50
         
         # Check value ranges
         assert np.all((result['mass'] >= 0) & (result['mass'] <= 1))
         assert np.all((result['volume'] >= 0) & (result['volume'] <= 1))
         assert 0 <= result['auc'] <= 1
         
-        # Mass should be monotonic decreasing
-        assert np.all(np.diff(result['mass']) <= 0)  # Decreasing
-        # Volume should generally be decreasing, but with simulation noise
-        # Check that the overall trend is decreasing
-        volume_diff = result['volume'][-1] - result['volume'][0]
-        assert volume_diff < 0  # Overall decreasing trend
+        # Mass should be monotonic non-decreasing (follows axis_alpha from 0 to 1)
+        assert np.all(np.diff(result['mass']) >= 0)  # Non-decreasing
+        # Check that mass starts at 0 and ends at 1
+        assert result['mass'][0] == 0.0  # First alpha = 0
+        assert result['mass'][-1] == 1.0  # Last alpha = 1
+        # Check that axis_alpha is correct
+        np.testing.assert_allclose(result['axis_alpha'], np.linspace(0, 1, 50))
+        # With simulation, volume can fluctuate
+        # Just check that volumes are valid
+        assert all(0 <= v <= 1 for v in result['volume'])
     
     def test_perfect_detector(self):
         """Test MV curve for perfect anomaly detector."""
@@ -45,8 +53,9 @@ class TestMassVolume:
         # With simulation, perfect detector might not achieve very low AUC
         # but should still be reasonable
         assert 0 <= result['auc'] <= 1
-        # Check that mass=1 when volume=1 (at threshold=0)
-        assert result['mass'][0] == 1.0
+        # Check that mass follows axis_alpha
+        assert result['mass'][0] == 0.0  # First alpha = 0
+        assert result['mass'][-1] == 1.0  # Last alpha = 1
     
     def test_random_detector(self):
         """Test MV curve for random detector."""

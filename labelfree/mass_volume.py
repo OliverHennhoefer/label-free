@@ -18,6 +18,8 @@ def mass_volume_curve(
     The MV curve shows the trade-off between mass (fraction of data captured)
     and volume (fraction of space occupied) at different score thresholds.
     
+    This implementation follows the algorithm from Goix et al. (EMMV_benchmarks).
+    
     Parameters
     ----------
     scores : array-like of shape (n_samples,)
@@ -25,7 +27,7 @@ def mass_volume_curve(
     data : array-like of shape (n_samples, n_features)
         Original data points corresponding to scores.
     n_thresholds : int, default=100
-        Number of thresholds to evaluate.
+        Number of mass levels (alpha values) to evaluate.
     n_mc_samples : int, default=10000
         Number of Monte Carlo samples for volume estimation.
     random_state : int, optional
@@ -37,10 +39,10 @@ def mass_volume_curve(
     Returns
     -------
     dict with keys:
-        - 'mass': Mass values at each threshold
-        - 'volume': Volume values at each threshold
+        - 'mass': Mass values (alpha) from 0 to 1
+        - 'volume': Volume values at each mass level
         - 'auc': Area under the MV curve (lower is better)
-        - 'thresholds': Score thresholds used
+        - 'axis_alpha': The alpha values used (same as mass)
     """
     scores = validate_scores(scores)
     data = validate_data(data)
@@ -50,13 +52,10 @@ def mass_volume_curve(
     
     rng = np.random.default_rng(random_state)
     
-    # Compute thresholds based on score quantiles
-    quantiles = np.linspace(0, 100, n_thresholds)
-    thresholds = np.percentile(scores, quantiles)
-    
     # Generate uniform samples in data bounding box
     data_min = data.min(axis=0)
     data_max = data.max(axis=0)
+    volume_support = np.prod(data_max - data_min)
     uniform_samples = rng.uniform(data_min, data_max, size=(n_mc_samples, data.shape[1]))
     
     # Generate scores for uniform samples
@@ -67,16 +66,37 @@ def mass_volume_curve(
         # Simulate scores based on nearest neighbors (for testing/demo purposes)
         uniform_scores = _simulate_uniform_scores(uniform_samples, data, scores, rng)
     
-    # Compute masses and volumes
+    # Define target mass levels (alpha values)
+    axis_alpha = np.linspace(0, 1, n_thresholds)
+    
+    # Sort scores in descending order (higher scores = more anomalous)
+    n_samples = len(scores)
+    scores_argsort = scores.argsort()[::-1]  # Descending order
+    
+    # Compute mass-volume curve following reference implementation
     masses = np.zeros(n_thresholds)
     volumes = np.zeros(n_thresholds)
     
-    for i, threshold in enumerate(thresholds):
-        # Mass: fraction of data with score >= threshold
-        masses[i] = (scores >= threshold).mean()
-        
-        # Volume: estimated by fraction of uniform samples with score >= threshold
-        volumes[i] = (uniform_scores >= threshold).mean()
+    mass = 0
+    cpt = 0
+    threshold = scores[scores_argsort[0]] if n_samples > 0 else 0
+    
+    for i in range(n_thresholds):
+        # Special case for alpha = 0
+        if axis_alpha[i] == 0:
+            masses[i] = 0
+            # Use highest threshold (includes no points)
+            volumes[i] = (uniform_scores > scores[scores_argsort[0]]).sum() / n_mc_samples if n_samples > 0 else 0
+        else:
+            # Find threshold corresponding to target mass
+            while mass < axis_alpha[i] and cpt < n_samples:
+                threshold = scores[scores_argsort[cpt]]
+                cpt += 1
+                mass = cpt / n_samples
+            
+            masses[i] = mass
+            # Volume: fraction of uniform samples with score >= threshold
+            volumes[i] = (uniform_scores >= threshold).sum() / n_mc_samples
     
     # Compute area under curve
     auc = compute_auc(masses, volumes)
@@ -85,7 +105,7 @@ def mass_volume_curve(
         'mass': masses,
         'volume': volumes,
         'auc': auc,
-        'thresholds': thresholds
+        'axis_alpha': axis_alpha
     }
 
 
