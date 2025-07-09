@@ -1,8 +1,6 @@
-"""Tests for Excess-Mass curve."""
-
 import numpy as np
 import pytest
-from labelfree.excess_mass import excess_mass_curve
+from labelfree.metrics.mass_exceedance import mass_exceedance_auc
 from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
 
 
@@ -19,7 +17,7 @@ class TestExcessMass:
         volume_scores = np.random.randn(1000)
 
         # Compute EM curve
-        result = excess_mass_curve(scores, volume_scores)
+        result = mass_exceedance_auc(scores, volume_scores)
 
         # Check output
         assert set(result.keys()) == {"t", "em", "auc", "amax"}
@@ -37,7 +35,7 @@ class TestExcessMass:
         scores = np.ones(100)
         volume_scores = np.ones(100)
 
-        result = excess_mass_curve(scores, volume_scores)
+        result = mass_exceedance_auc(scores, volume_scores)
 
         # Should still run without errors
         assert result["auc"] >= 0
@@ -45,4 +43,4 @@ class TestExcessMass:
 
         # Empty volume scores
         with pytest.raises(ValueError):
-            excess_mass_curve(scores, [])
+            mass_exceedance_auc(scores, [])

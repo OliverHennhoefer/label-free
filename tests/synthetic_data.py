@@ -1,5 +1,3 @@
-"""Generate synthetic data for testing label-free metrics."""
-
 import numpy as np
 from typing import Tuple, Optional
 

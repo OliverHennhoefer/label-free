@@ -1,7 +1,5 @@
-"""Tests for IREOS."""
-
 import numpy as np
-from labelfree.ireos import ireos, sireos
+from labelfree.metrics.ireos import ireos, sireos
 from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
 
 

@@ -3,7 +3,7 @@
 import numpy as np
 from typing import Dict, List, Callable, Optional
 from scipy.stats import kendalltau, spearmanr
-from .utils import validate_data
+from labelfree.utils import validate_data
 
 
 def ranking_stability(

@@ -2,10 +2,10 @@
 
 import numpy as np
 from typing import Optional, Dict, Callable
-from .utils import validate_scores, validate_data, compute_auc
+from labelfree.utils import validate_scores, validate_data, compute_auc
 
 
-def mass_volume_curve(
+def mass_volume_auc(
     scores: np.ndarray,
     data: np.ndarray,
     n_thresholds: int = 100,

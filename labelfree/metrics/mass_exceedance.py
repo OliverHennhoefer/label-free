@@ -2,10 +2,10 @@
 
 import numpy as np
 from typing import Dict
-from .utils import validate_scores, compute_auc
+from labelfree.utils import validate_scores, compute_auc
 
 
-def excess_mass_curve(
+def mass_exceedance_auc(
     scores: np.ndarray,
     volume_scores: np.ndarray,
     volume_support: float = 1.0,

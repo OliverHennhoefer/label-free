@@ -1,7 +1,5 @@
-"""Tests for ranking stability metrics."""
-
 import numpy as np
-from labelfree.stability import ranking_stability, top_k_stability
+from labelfree.metrics.stability import ranking_stability, top_k_stability
 from .synthetic_data import make_blobs_with_anomalies
 
 

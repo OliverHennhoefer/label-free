@@ -1,8 +1,6 @@
-"""Tests for Mass-Volume curve."""
-
 import numpy as np
 import pytest
-from labelfree.mass_volume import mass_volume_curve
+from labelfree.metrics.mass_volume import mass_volume_auc
 from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
 
 
@@ -20,7 +18,7 @@ class TestMassVolume:
         scores = make_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Compute MV curve
-        result = mass_volume_curve(scores, X, n_thresholds=50, n_mc_samples=1000)
+        result = mass_volume_auc(scores, X, n_thresholds=50, n_mc_samples=1000)
 
         # Check output structure
         assert set(result.keys()) == {"mass", "volume", "auc", "axis_alpha"}
@@ -49,7 +47,7 @@ class TestMassVolume:
         X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
         scores = make_anomaly_scores(X, y, method="perfect", noise_level=0)
 
-        result = mass_volume_curve(scores, X, n_thresholds=100)
+        result = mass_volume_auc(scores, X, n_thresholds=100)
 
         # With simulation, perfect detector might not achieve very low AUC
         # but should still be reasonable
@@ -63,7 +61,7 @@ class TestMassVolume:
         X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
         scores = make_anomaly_scores(X, y, method="random")
 
-        result = mass_volume_curve(scores, X, n_thresholds=100)
+        result = mass_volume_auc(scores, X, n_thresholds=100)
 
         # Random detector should have AUC close to 0.5
         assert 0.4 <= result["auc"] <= 0.6
@@ -75,23 +73,23 @@ class TestMassVolume:
 
         # Mismatched lengths
         with pytest.raises(ValueError):
-            mass_volume_curve(scores[:50], X)
+            mass_volume_auc(scores[:50], X)
 
         # Empty inputs
         with pytest.raises(ValueError):
-            mass_volume_curve([], X)
+            mass_volume_auc([], X)
 
         # Invalid dimensions
         with pytest.raises(ValueError):
-            mass_volume_curve(scores.reshape(-1, 1), X)
+            mass_volume_auc(scores.reshape(-1, 1), X)
 
     def test_reproducibility(self):
         """Test that results are reproducible with fixed seed."""
         X, y = make_blobs_with_anomalies(random_state=42)
         scores = make_anomaly_scores(X, y, random_state=42)
 
-        result1 = mass_volume_curve(scores, X, random_state=42)
-        result2 = mass_volume_curve(scores, X, random_state=42)
+        result1 = mass_volume_auc(scores, X, random_state=42)
+        result2 = mass_volume_auc(scores, X, random_state=42)
 
         np.testing.assert_array_equal(result1["mass"], result2["mass"])
         np.testing.assert_array_equal(result1["volume"], result2["volume"])

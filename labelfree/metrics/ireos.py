@@ -4,7 +4,7 @@ import numpy as np
 from typing import Tuple, Optional
 from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score
-from .utils import validate_scores, validate_data
+from labelfree.utils import validate_scores, validate_data
 
 
 def ireos(
@@ -55,7 +55,7 @@ def ireos(
         return 0.5, 1.0  # No separation possible
 
     # Train SVM and evaluate via cross-validation
-    svm = SVC(kernel="rbf", random_state=random_state)
+    svm = SVC(C=1.0, kernel="rbf", gamma="scale", random_state=random_state)
     cv_scores = cross_val_score(
         svm, data, binary_labels, cv=n_splits, scoring="roc_auc"
     )
