@@ -23,17 +23,15 @@ __version__ = "0.0.1"
 __all__ = [
     # Core metrics
     "mass_volume_curve",
-    "excess_mass_curve", 
+    "excess_mass_curve",
     "ireos",
     "sireos",
     "ranking_stability",
     "top_k_stability",
-    
     # Base classes
     "LabelFreeMetric",
-    
     # Utilities
     "validate_scores",
-    "validate_data", 
+    "validate_data",
     "compute_auc",
 ]

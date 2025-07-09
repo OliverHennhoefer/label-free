@@ -1,6 +1,6 @@
 """Utility functions for label-free metrics."""
+
 import numpy as np
-from typing import Tuple, Optional
 
 
 def validate_scores(scores: np.ndarray, name: str = "scores") -> np.ndarray:
