@@ -69,11 +69,14 @@ def ireos(
     return ireos_score, p_value
 
 
-def sireos(
+def sireos_legacy(
     scores: np.ndarray, data: np.ndarray, similarity: str = "euclidean"
 ) -> float:
     """
-    Compute SIREOS (Similarity-based IREOS).
+    Compute SIREOS Legacy (Similarity-based IREOS).
+
+    Legacy implementation of SIREOS that was part of the IREOS module.
+    For the official SIREOS implementation, use labelfree.metrics.sireos.sireos().
 
     Faster variant using similarity ratios instead of classification.
 

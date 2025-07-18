@@ -19,57 +19,60 @@ x_train_normal, x_test_normal = train_test_split(
 )
 
 x_test = np.vstack([x_test_normal, x_anomaly])
-y_test = np.hstack([
-    np.zeros(len(x_test_normal)),
-    np.ones(len(x_anomaly))
-])
+y_test = np.hstack([np.zeros(len(x_test_normal)), np.ones(len(x_anomaly))])
 
 
 def objective(trial):
     params = {
-        'n_estimators': trial.suggest_int('n_estimators', 50, 500),
-        'max_samples': trial.suggest_float('max_samples', 0.1, 1.0),
-        'max_features': trial.suggest_float('max_features', 0.1, 1.0),
-        'bootstrap': trial.suggest_categorical('bootstrap', [True, False]),
+        "n_estimators": trial.suggest_int("n_estimators", 50, 500),
+        "max_samples": trial.suggest_float("max_samples", 0.1, 1.0),
+        "max_features": trial.suggest_float("max_features", 0.1, 1.0),
+        "bootstrap": trial.suggest_categorical("bootstrap", [True, False]),
     }
 
     cv_scores = []
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
-    
+
     for train_idx, val_idx in kf.split(x_train_normal):
-        model = IsolationForest(**params, contamination=sys.float_info.min, random_state=42)
+        model = IsolationForest(
+            **params, contamination=sys.float_info.min, random_state=42
+        )
         model.fit(x_train_normal[train_idx])
-        
+
         val_scores = -model.score_samples(x_train_normal[val_idx])
-        ireos_score, _ = labelfree.ireos(val_scores, x_train_normal[val_idx], random_state=42)
+        ireos_score, _ = labelfree.ireos(
+            val_scores, x_train_normal[val_idx], random_state=42
+        )
         cv_scores.append(ireos_score)
-    
+
     model = IsolationForest(**params, contamination=sys.float_info.min, random_state=42)
     model.fit(x_train_normal)
     test_scores = -model.score_samples(x_test)
-    
+
     roc_auc = roc_auc_score(y_test, test_scores)
     pr_auc = average_precision_score(y_test, test_scores)
     ireos_auc, _ = labelfree.ireos(test_scores, x_test, random_state=42)
-    
-    trial.set_user_attr('roc_auc', roc_auc)
-    trial.set_user_attr('pr_auc', pr_auc)
-    trial.set_user_attr('ireos_auc', ireos_auc)
-    
+
+    trial.set_user_attr("roc_auc", roc_auc)
+    trial.set_user_attr("pr_auc", pr_auc)
+    trial.set_user_attr("ireos_auc", ireos_auc)
+
     return np.mean(cv_scores)
 
 
-study = optuna.create_study(direction='maximize')
+study = optuna.create_study(direction="maximize")
 study.optimize(objective, n_trials=100)
 
-completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-roc_aucs = np.array([t.user_attrs['roc_auc'] for t in completed_trials])
-pr_aucs = np.array([t.user_attrs['pr_auc'] for t in completed_trials])
-ireos_aucs = np.array([t.user_attrs['ireos_auc'] for t in completed_trials])
+completed_trials = [
+    t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
+]
+roc_aucs = np.array([t.user_attrs["roc_auc"] for t in completed_trials])
+pr_aucs = np.array([t.user_attrs["pr_auc"] for t in completed_trials])
+ireos_aucs = np.array([t.user_attrs["ireos_auc"] for t in completed_trials])
 
-print("="*60)
+print("=" * 60)
 print("PROXY QUALITY ANALYSIS: IREOS vs Supervised Metrics")
-print("="*60)
+print("=" * 60)
 
 # 1. Correlation Analysis
 print("\n1. CORRELATION ANALYSIS")
@@ -81,12 +84,12 @@ spearman_pr_ireos, p_spearman_pr = spearmanr(pr_aucs, ireos_aucs)
 kendall_roc_ireos, p_kendall_roc = kendalltau(roc_aucs, ireos_aucs)
 kendall_pr_ireos, p_kendall_pr = kendalltau(pr_aucs, ireos_aucs)
 
-print(f"ROC-AUC vs IREOS-AUC:")
+print("ROC-AUC vs IREOS-AUC:")
 print(f"  Pearson:  {pearson_roc_ireos:.3f} (p={p_pearson_roc:.3f})")
 print(f"  Spearman: {spearman_roc_ireos:.3f} (p={p_spearman_roc:.3f})")
 print(f"  Kendall:  {kendall_roc_ireos:.3f} (p={p_kendall_roc:.3f})")
 
-print(f"\nPR-AUC vs IREOS-AUC:")
+print("\nPR-AUC vs IREOS-AUC:")
 print(f"  Pearson:  {pearson_pr_ireos:.3f} (p={p_pearson_pr:.3f})")
 print(f"  Spearman: {spearman_pr_ireos:.3f} (p={p_spearman_pr:.3f})")
 print(f"  Kendall:  {kendall_pr_ireos:.3f} (p={p_kendall_pr:.3f})")
@@ -94,8 +97,8 @@ print(f"  Kendall:  {kendall_pr_ireos:.3f} (p={p_kendall_pr:.3f})")
 # 2. Ranking Agreement
 print("\n2. RANKING AGREEMENT")
 print("-" * 20)
-roc_ranks = rankdata(-roc_aucs)    # Higher ROC-AUC is better
-pr_ranks = rankdata(-pr_aucs)      # Higher PR-AUC is better
+roc_ranks = rankdata(-roc_aucs)  # Higher ROC-AUC is better
+pr_ranks = rankdata(-pr_aucs)  # Higher PR-AUC is better
 ireos_ranks = rankdata(-ireos_aucs)  # Higher IREOS-AUC is better
 
 rank_corr_roc_ireos = spearmanr(roc_ranks, ireos_ranks)[0]
@@ -111,10 +114,10 @@ for k in [5, 10, 20]:
     top_k_roc = set(np.argsort(roc_aucs)[-k:])
     top_k_pr = set(np.argsort(pr_aucs)[-k:])
     top_k_ireos = set(np.argsort(ireos_aucs)[-k:])
-    
+
     overlap_roc_ireos = len(top_k_roc & top_k_ireos) / k
     overlap_pr_ireos = len(top_k_pr & top_k_ireos) / k
-    
+
     print(f"Top-{k} overlap ROC-AUC vs IREOS-AUC: {overlap_roc_ireos:.3f}")
     print(f"Top-{k} overlap PR-AUC vs IREOS-AUC:  {overlap_pr_ireos:.3f}")
 
@@ -139,6 +142,8 @@ print(f"PR-AUC regret: {pr_regret:.3f}")
 # 5. Summary Assessment
 print("\n5. PROXY QUALITY SUMMARY")
 print("-" * 24)
+
+
 def assess_proxy_quality(corr, overlap_10, regret):
     if corr > 0.7 and overlap_10 > 0.7 and regret < 0.05:
         return "EXCELLENT"
@@ -149,12 +154,21 @@ def assess_proxy_quality(corr, overlap_10, regret):
     else:
         return "POOR"
 
-roc_assessment = assess_proxy_quality(abs(spearman_roc_ireos), len(set(np.argsort(roc_aucs)[-10:]) & set(np.argsort(ireos_aucs)[-10:]))/10, roc_regret)
-pr_assessment = assess_proxy_quality(abs(spearman_pr_ireos), len(set(np.argsort(pr_aucs)[-10:]) & set(np.argsort(ireos_aucs)[-10:]))/10, pr_regret)
+
+roc_assessment = assess_proxy_quality(
+    abs(spearman_roc_ireos),
+    len(set(np.argsort(roc_aucs)[-10:]) & set(np.argsort(ireos_aucs)[-10:])) / 10,
+    roc_regret,
+)
+pr_assessment = assess_proxy_quality(
+    abs(spearman_pr_ireos),
+    len(set(np.argsort(pr_aucs)[-10:]) & set(np.argsort(ireos_aucs)[-10:])) / 10,
+    pr_regret,
+)
 
 print(f"IREOS-AUC as proxy for ROC-AUC: {roc_assessment}")
 print(f"IREOS-AUC as proxy for PR-AUC:  {pr_assessment}")
 
-print(f"\nBest parameters (IREOS-AUC selected):")
+print("\nBest parameters (IREOS-AUC selected):")
 for key, value in study.best_params.items():
     print(f"  {key}: {value}")

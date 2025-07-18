@@ -11,12 +11,16 @@ This package provides label-free evaluation metrics for anomaly detection:
 All metrics work without ground truth labels.
 """
 
-from labelfree.metrics.mass_volume import mass_volume_auc
-from labelfree.metrics.mass_exceedance import mass_exceedance_auc
-from labelfree.metrics.ireos import ireos, sireos
-from labelfree.metrics.stability import ranking_stability, top_k_stability
-from labelfree.metrics.base import LabelFreeMetric
-from .utils import validate_scores, validate_data, compute_auc
+from labelfree.metrics import (
+    mass_volume_auc,
+    mass_exceedance_auc,
+    ranking_stability,
+    top_k_stability,
+    ireos,
+    sireos,
+    sireos_separation,
+)
+from .utils import validate_scores, validate_data, compute_auc, compute_volume_support
 
 __version__ = "0.0.1"
 
@@ -26,12 +30,12 @@ __all__ = [
     "mass_exceedance_auc",
     "ireos",
     "sireos",
+    "sireos_separation",
     "ranking_stability",
     "top_k_stability",
-    # Base classes
-    "LabelFreeMetric",
     # Utilities
     "validate_scores",
     "validate_data",
     "compute_auc",
+    "compute_volume_support",
 ]
