@@ -132,8 +132,9 @@ def mass_volume_auc(
         # Volume: absolute volume in data units (matches external implementation)
         volumes[i] = (uniform_scores >= threshold).sum() / n_mc_samples * volume_support
 
-    # Compute area under curve
-    auc = compute_auc(masses, volumes)
+    # Compute area under curve using target masses (axis_alpha) for compatibility with reference
+    # This matches the reference implementation which uses axis_alpha for AUC calculation
+    auc = compute_auc(axis_alpha, volumes)
 
     return {"mass": masses, "volume": volumes, "auc": auc, "axis_alpha": axis_alpha}
 
