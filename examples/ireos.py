@@ -40,8 +40,10 @@ def objective(trial):
         model.fit(x_train_normal[train_idx])
 
         val_scores = -model.score_samples(x_train_normal[val_idx])
+        # Use faster parameters for hyperparameter optimization
         ireos_score, _ = labelfree.ireos(
-            val_scores, x_train_normal[val_idx], random_state=42
+            val_scores, x_train_normal[val_idx], 
+            n_gamma=15, n_monte_carlo=20, random_state=42
         )
         cv_scores.append(ireos_score)
 
@@ -51,7 +53,10 @@ def objective(trial):
 
     roc_auc = roc_auc_score(y_test, test_scores)
     pr_auc = average_precision_score(y_test, test_scores)
-    ireos_auc, _ = labelfree.ireos(test_scores, x_test, random_state=42)
+    # Use faster parameters for final evaluation
+    ireos_auc, _ = labelfree.ireos(
+        test_scores, x_test, n_gamma=20, n_monte_carlo=30, random_state=42
+    )
 
     trial.set_user_attr("roc_auc", roc_auc)
     trial.set_user_attr("pr_auc", pr_auc)
