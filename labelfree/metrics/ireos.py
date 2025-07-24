@@ -72,32 +72,28 @@ def ireos(
         )
 
     rng = np.random.default_rng(random_state)
-    
+
     # Standardize data
     scaler = StandardScaler()
     X = scaler.fit_transform(data)
-    
+
     # Select outliers from continuous scores
     if n_outliers is not None:
         outlier_indices = np.argpartition(scores, -n_outliers)[-n_outliers:]
     else:
         threshold = np.percentile(scores, percentile)
         outlier_indices = np.where(scores >= threshold)[0]
-    
+
     if len(outlier_indices) == 0:
         return 0.0, 1.0
-    
+
     # Estimate gamma range if not provided
     if gamma_max is None:
         gamma_max = _estimate_gamma_max(X, outlier_indices, gamma_min, rng)
-    
+
     # Create gamma values using logarithmic spacing
-    gamma_values = np.logspace(
-        np.log10(gamma_min), 
-        np.log10(gamma_max), 
-        n_gamma
-    )
-    
+    gamma_values = np.logspace(np.log10(gamma_min), np.log10(gamma_max), n_gamma)
+
     # Compute separability curve
     separabilities = []
     for gamma in gamma_values:
@@ -106,35 +102,41 @@ def ireos(
         for outlier_idx in outlier_indices:
             sep = _compute_separability(X, outlier_idx, gamma, penalty, random_state)
             outlier_seps.append(sep)
-        
+
         # Average separability across all outliers
         avg_sep = np.mean(outlier_seps)
         separabilities.append(avg_sep)
-    
+
     separabilities = np.array(separabilities)
-    
+
     # Compute IREOS index using numerical integration
     gamma_range = gamma_max - gamma_min
     ireos_raw = simpson(separabilities, x=gamma_values) / gamma_range
-    
+
     # Statistical adjustment if requested
     if adjustment:
         # Estimate expected value using Monte Carlo
         expected_ireos = _estimate_expected_ireos(
-            X, len(outlier_indices), gamma_values, penalty, n_monte_carlo//4, rng
+            X, len(outlier_indices), gamma_values, penalty, n_monte_carlo // 4, rng
         )
-        
+
         # Apply adjustment formula: (I - E{I}) / (1 - E{I})
         ireos_adjusted = (ireos_raw - expected_ireos) / (1 - expected_ireos + 1e-10)
         ireos_score = max(0.0, ireos_adjusted)
     else:
         ireos_score = ireos_raw
-    
+
     # Compute p-value using Monte Carlo
     p_value = _compute_p_value(
-        X, len(outlier_indices), gamma_values, penalty, ireos_score, n_monte_carlo//2, rng
+        X,
+        len(outlier_indices),
+        gamma_values,
+        penalty,
+        ireos_score,
+        n_monte_carlo // 2,
+        rng,
     )
-    
+
     return float(ireos_score), float(p_value)
 
 
@@ -147,144 +149,141 @@ def _rbf_kernel(X: np.ndarray, Y: np.ndarray, gamma: float) -> np.ndarray:
 
 
 def _estimate_gamma_max(
-    X: np.ndarray, 
-    outlier_indices: np.ndarray, 
-    gamma_min: float, 
-    rng: np.random.Generator
+    X: np.ndarray,
+    outlier_indices: np.ndarray,
+    gamma_min: float,
+    rng: np.random.Generator,
 ) -> float:
     """Estimate maximum gamma value where outliers become separable."""
     gamma = gamma_min
     max_attempts = 30
-    
+
     # Test with a representative outlier
     outlier_idx = outlier_indices[0]
-    
+
     for _ in range(max_attempts):
         separability = _compute_separability(X, outlier_idx, gamma, 100.0, None)
         if separability >= 0.95:
             break
         gamma *= 1.5
-    
+
     return min(gamma, 1000.0)
 
 
 def _compute_separability(
-    X: np.ndarray, 
-    outlier_idx: int, 
-    gamma: float, 
+    X: np.ndarray,
+    outlier_idx: int,
+    gamma: float,
     penalty: float,
-    random_state: Optional[int]
+    random_state: Optional[int],
 ) -> float:
     """Compute separability probability for a single outlier at given gamma."""
     n_samples = len(X)
-    
+
     # Create binary labels: outlier vs all others
     y = np.full(n_samples, 0)
     y[outlier_idx] = 1
-    
+
     # Check for degenerate case
     if np.sum(y) == 0 or np.sum(y) == n_samples:
         return 0.5
-    
+
     try:
         # Create RBF features using Nystroem-like sampling for efficiency
         n_components = min(150, n_samples)
         rng_local = np.random.default_rng(random_state)
         sample_indices = rng_local.choice(n_samples, n_components, replace=False)
         X_sample = X[sample_indices]
-        
+
         # Compute kernel features for all points
         K = _rbf_kernel(X, X_sample, gamma)
-        
+
         # Train logistic regression with high regularization
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             clf = LogisticRegression(
-                C=penalty,
-                random_state=random_state,
-                max_iter=500,
-                solver='liblinear'
+                C=penalty, random_state=random_state, max_iter=500, solver="liblinear"
             )
             clf.fit(K, y)
-            
+
             # Get probability for the outlier
-            prob = clf.predict_proba(K[outlier_idx:outlier_idx+1])
+            prob = clf.predict_proba(K[outlier_idx : outlier_idx + 1])
             return float(prob[0, 1])
-            
+
     except Exception:
         return 0.5
 
 
 def _estimate_expected_ireos(
-    X: np.ndarray, 
-    n_outliers: int, 
-    gamma_values: np.ndarray, 
+    X: np.ndarray,
+    n_outliers: int,
+    gamma_values: np.ndarray,
     penalty: float,
-    n_runs: int, 
-    rng: np.random.Generator
+    n_runs: int,
+    rng: np.random.Generator,
 ) -> float:
     """Estimate expected IREOS for random solutions using Monte Carlo."""
     random_scores = []
-    
+
     # Use coarse gamma grid for efficiency
-    gamma_subset = gamma_values[::max(1, len(gamma_values)//15)]
-    
+    gamma_subset = gamma_values[:: max(1, len(gamma_values) // 15)]
+
     for _ in range(n_runs):
         # Select random outliers
         random_outliers = rng.choice(len(X), n_outliers, replace=False)
-        
+
         # Compute separability curve for random selection
         separabilities = []
         for gamma in gamma_subset:
             outlier_seps = [
-                _compute_separability(X, idx, gamma, penalty, None) 
+                _compute_separability(X, idx, gamma, penalty, None)
                 for idx in random_outliers
             ]
             separabilities.append(np.mean(outlier_seps))
-        
+
         # Compute raw IREOS for random selection
         gamma_range = gamma_values[-1] - gamma_values[0]
         random_ireos = simpson(separabilities, x=gamma_subset) / gamma_range
         random_scores.append(random_ireos)
-    
+
     return np.mean(random_scores) if random_scores else 0.5
 
 
 def _compute_p_value(
-    X: np.ndarray, 
-    n_outliers: int, 
-    gamma_values: np.ndarray, 
+    X: np.ndarray,
+    n_outliers: int,
+    gamma_values: np.ndarray,
     penalty: float,
-    observed_ireos: float, 
-    n_runs: int, 
-    rng: np.random.Generator
+    observed_ireos: float,
+    n_runs: int,
+    rng: np.random.Generator,
 ) -> float:
     """Compute statistical significance using Monte Carlo."""
     random_scores = []
-    
+
     # Use even coarser gamma grid for p-value computation
-    gamma_subset = gamma_values[::max(1, len(gamma_values)//10)]
-    
+    gamma_subset = gamma_values[:: max(1, len(gamma_values) // 10)]
+
     for _ in range(n_runs):
         # Select random outliers
         random_outliers = rng.choice(len(X), n_outliers, replace=False)
-        
+
         # Compute separability curve for random selection
         separabilities = []
         for gamma in gamma_subset:
             outlier_seps = [
-                _compute_separability(X, idx, gamma, penalty, None) 
+                _compute_separability(X, idx, gamma, penalty, None)
                 for idx in random_outliers
             ]
             separabilities.append(np.mean(outlier_seps))
-        
+
         gamma_range = gamma_values[-1] - gamma_values[0]
         random_ireos = simpson(separabilities, x=gamma_subset) / gamma_range
         random_scores.append(random_ireos)
-    
+
     if len(random_scores) == 0:
         return 1.0
-    
+
     # Compute p-value: proportion of random scores >= observed
     p_value = np.mean(np.array(random_scores) >= observed_ireos)
     return max(p_value, 1e-6)

@@ -52,11 +52,12 @@ class TestStability:
 
     def test_unstable_scoring(self):
         """Test with unstable scoring function."""
-        X = np.random.randn(200, 5)
+        rng = np.random.default_rng(42)
+        X = rng.standard_normal((200, 5))
 
         # Random scoring function (unstable)
         def score_func(data):
-            return np.random.randn(len(data))
+            return rng.standard_normal(len(data))
 
         result = ranking_stability(score_func, X, n_subsamples=10)
 

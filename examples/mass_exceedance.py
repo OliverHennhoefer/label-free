@@ -1,9 +1,7 @@
 import sys
 import optuna
+import labelfree
 import numpy as np
-
-# Create reproducible random number generator
-rng = np.random.default_rng(seed=42)
 
 from sklearn.datasets import load_breast_cancer
 from sklearn.ensemble import IsolationForest
@@ -11,7 +9,8 @@ from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr, spearmanr, kendalltau, rankdata
-import labelfree
+
+rng = np.random.default_rng(seed=42)
 
 x, y = load_breast_cancer(return_X_y=True)
 

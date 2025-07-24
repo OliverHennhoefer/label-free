@@ -18,14 +18,14 @@ def mass_volume_auc(
 
     The MV curve shows the trade-off between mass (fraction of data captured)
     and volume (absolute volume of space occupied) at different score thresholds.
-    
+
     This implementation follows the algorithm from Goix et al. (EMMV_benchmarks)
     and is designed for evaluation in the high-mass region (typically 0.9-0.999).
-    
+
     The volume support (bounding box volume) is computed automatically from the data.
-    
+
     **Important:** Data should be scaled using MinMaxScaler or similar to [0,1] range
-    for best results. AUC values scale with the bounding box volume, so unscaled 
+    for best results. AUC values scale with the bounding box volume, so unscaled
     data can produce very large, hard-to-interpret values. The function will warn
     when volume support exceeds 100, indicating potential scaling issues.
 
@@ -56,7 +56,7 @@ def mass_volume_auc(
         - 'volume': Volume values at each mass level (in data units)
         - 'auc': Area under the MV curve
         - 'axis_alpha': The alpha values used (same as mass)
-        
+
     Examples
     --------
     >>> from sklearn.preprocessing import MinMaxScaler
@@ -70,7 +70,7 @@ def mass_volume_auc(
     >>> scores = -model.score_samples(X_scaled)
     >>> result = mass_volume_auc(scores, X_scaled)
     >>> print(f"MV-AUC: {result['auc']:.3f}")
-    
+
     Notes
     -----
     The volume values are in absolute data units (not normalized fractions).
@@ -84,7 +84,7 @@ def mass_volume_auc(
         raise ValueError(
             f"Length mismatch: {len(scores)} scores vs {len(data)} data points"
         )
-    
+
     # Compute volume support (bounding box volume) internally
     data_min = data.min(axis=0)
     data_max = data.max(axis=0)
@@ -92,18 +92,21 @@ def mass_volume_auc(
     # Handle zero ranges (all values identical in a dimension)
     ranges = np.maximum(ranges, 1e-60)
     volume_support = float(np.prod(ranges)) + 1e-60
-    
+
     # Validation for parameters
     if not 0 <= alpha_min < alpha_max <= 1:
-        raise ValueError(f"Invalid alpha range: alpha_min={alpha_min}, alpha_max={alpha_max}")
-    
+        raise ValueError(
+            f"Invalid alpha range: alpha_min={alpha_min}, alpha_max={alpha_max}"
+        )
+
     # Warn about potential scaling issues
     if volume_support > 100:
         import warnings
+
         warnings.warn(
             f"Large volume support ({volume_support:.2f}) detected. "
             "Consider normalizing your data for better interpretability.",
-            UserWarning
+            UserWarning,
         )
 
     rng = np.random.default_rng(random_state)
@@ -134,7 +137,9 @@ def mass_volume_auc(
 
     mass = 0
     cpt = 0
-    threshold = scores[scores_argsort[-1]] if n_samples > 0 else 0  # Highest score initially
+    threshold = (
+        scores[scores_argsort[-1]] if n_samples > 0 else 0
+    )  # Highest score initially
 
     for i in range(n_thresholds):
         # Find threshold corresponding to target mass

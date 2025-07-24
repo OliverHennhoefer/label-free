@@ -73,20 +73,20 @@ def sireos(
 
     # Compute pairwise distances using FAISS (corrected for proper matrix)
     data_float32 = data.astype(np.float32)
-    
+
     # Create FAISS index for L2 distance
     index = faiss.IndexFlatL2(data_float32.shape[1])
     index.add(data_float32)
-    
+
     # Build proper distance matrix (FAISS returns sorted results)
     distances = np.zeros((n_samples, n_samples))
     for i in range(n_samples):
-        query_point = data_float32[i:i+1]
+        query_point = data_float32[i : i + 1]
         distances_sq_i, indices_i = index.search(query_point, n_samples)
         distances_i = np.sqrt(distances_sq_i[0])
         # Place distances in correct positions based on indices
         distances[i, indices_i[0]] = distances_i
-    
+
     # Compute heat kernel threshold parameter
     non_zero_distances = distances[distances > 0]
     if len(non_zero_distances) == 0:
@@ -101,17 +101,17 @@ def sireos(
     for i in range(n_samples):
         # Get distances from point i to all other points
         point_distances = distances[i]
-        
+
         # Get indices of other points (excluding self)
         other_indices = [j for j in range(n_samples) if j != i]
         distances_to_others = point_distances[other_indices]
-        
+
         # Compute exponential kernel similarities to other points only
         similarities = np.exp(-(distances_to_others**2) / (2 * threshold**2))
-        
+
         # Compute mean similarity (matches reference: np.mean(similarities))
         mean_similarity = np.mean(similarities)
-        
+
         # Weight by normalized score and add to total
         total_score += mean_similarity * scores_normalized[i]
 

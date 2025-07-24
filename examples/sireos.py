@@ -225,7 +225,9 @@ sireos_sireos_sep_corr = spearmanr(sireos_aucs, sireos_seps)[0]
 print(f"  Spearman correlation: {sireos_sireos_sep_corr:.3f}")
 
 print(f"\nMean SIREOS score: {sireos_aucs.mean():.3f} ± {sireos_aucs.std():.3f}")
-print(f"Mean SIREOS Separation score: {sireos_seps.mean():.3f} ± {sireos_seps.std():.3f}")
+print(
+    f"Mean SIREOS Separation score: {sireos_seps.mean():.3f} ± {sireos_seps.std():.3f}"
+)
 
 print("\nBest parameters (SIREOS-selected):")
 for key, value in study.best_params.items():

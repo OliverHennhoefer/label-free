@@ -42,8 +42,11 @@ def objective(trial):
         val_scores = -model.score_samples(x_train_normal[val_idx])
         # Use faster parameters for hyperparameter optimization
         ireos_score, _ = labelfree.ireos(
-            val_scores, x_train_normal[val_idx], 
-            n_gamma=15, n_monte_carlo=20, random_state=42
+            val_scores,
+            x_train_normal[val_idx],
+            n_gamma=15,
+            n_monte_carlo=20,
+            random_state=42,
         )
         cv_scores.append(ireos_score)
 

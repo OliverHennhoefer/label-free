@@ -1,6 +1,6 @@
 import numpy as np
 from labelfree.metrics.ireos import ireos
-from labelfree.metrics.sireos import sireos, sireos_separation
+from labelfree.metrics.sireos import sireos_separation
 from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
 
 
@@ -27,8 +27,9 @@ class TestIREOS:
 
     def test_ireos_random_scores(self):
         """Test IREOS with random scores."""
-        X = np.random.randn(200, 5)
-        scores = np.random.randn(200)
+        rng = np.random.default_rng(42)
+        X = rng.standard_normal((200, 5))
+        scores = rng.standard_normal(200)
 
         # Use reduced parameters for faster testing
         ireos_score, p_value = ireos(
@@ -54,7 +55,8 @@ class TestIREOS:
 
     def test_degenerate_cases(self):
         """Test degenerate cases."""
-        X = np.random.randn(100, 2)
+        rng = np.random.default_rng(42)
+        X = rng.standard_normal((100, 2))
 
         # All scores identical - should result in low IREOS
         scores = np.ones(100)

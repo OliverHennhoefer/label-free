@@ -14,7 +14,8 @@ class TestExcessMass:
         scores = make_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Generate volume scores (scores on uniform samples)
-        volume_scores = np.random.randn(1000)
+        rng = np.random.default_rng(42)
+        volume_scores = rng.standard_normal(1000)
 
         # Compute EM curve
         result = mass_exceedance_auc(scores, volume_scores)

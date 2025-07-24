@@ -2,8 +2,6 @@ import sys
 import optuna
 import numpy as np
 
-rng = np.random.default_rng(seed=42)
-
 from sklearn.datasets import load_breast_cancer
 from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split, KFold
@@ -11,6 +9,8 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr, spearmanr, kendalltau, rankdata
 import labelfree
+
+rng = np.random.default_rng(seed=42)
 
 x, y = load_breast_cancer(return_X_y=True)
 
@@ -48,8 +48,7 @@ def objective(trial):
 
         val_scores = -model.score_samples(x_train_normal[val_idx])
         mv_result = labelfree.mass_volume_auc(
-            val_scores, x_train_normal[val_idx],
-            n_thresholds=50, random_state=42
+            val_scores, x_train_normal[val_idx], n_thresholds=50, random_state=42
         )
         cv_scores.append(mv_result["auc"])
 
@@ -60,8 +59,7 @@ def objective(trial):
     roc_auc = roc_auc_score(y_test, test_scores)
     pr_auc = average_precision_score(y_test, test_scores)
     mv_auc = labelfree.mass_volume_auc(
-        test_scores, x_test,
-        n_thresholds=50, random_state=42
+        test_scores, x_test, n_thresholds=50, random_state=42
     )["auc"]
 
     trial.set_user_attr("roc_auc", roc_auc)
