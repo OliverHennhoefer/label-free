@@ -1,14 +1,11 @@
-"""Mass-Volume curve implementation."""
-
 import numpy as np
 from typing import Optional, Dict, Callable
-from labelfree.utils import validate_scores, validate_data, compute_auc, compute_volume_support
+from labelfree.utils import validate_scores, validate_data, compute_auc
 
 
 def mass_volume_auc(
     scores: np.ndarray,
     data: np.ndarray,
-    volume_support: float,
     alpha_min: float = 0.9,
     alpha_max: float = 0.999,
     n_thresholds: int = 1000,
@@ -25,8 +22,12 @@ def mass_volume_auc(
     This implementation follows the algorithm from Goix et al. (EMMV_benchmarks)
     and is designed for evaluation in the high-mass region (typically 0.9-0.999).
     
-    IMPORTANT: Data should be appropriately scaled. Very large volume_support
-    values (>100) may indicate unnormalized data and lead to interpretation issues.
+    The volume support (bounding box volume) is computed automatically from the data.
+    
+    **Important:** Data should be scaled using MinMaxScaler or similar to [0,1] range
+    for best results. AUC values scale with the bounding box volume, so unscaled 
+    data can produce very large, hard-to-interpret values. The function will warn
+    when volume support exceeds 100, indicating potential scaling issues.
 
     Parameters
     ----------
@@ -34,9 +35,6 @@ def mass_volume_auc(
         Anomaly scores where higher values indicate anomalies.
     data : array-like of shape (n_samples, n_features)
         Original data points corresponding to scores.
-    volume_support : float
-        Total volume of the data space bounding box. Computed as
-        the product of (max - min) for each feature dimension.
     alpha_min : float, default=0.9
         Minimum mass level (fraction of data) to evaluate.
     alpha_max : float, default=0.999
@@ -59,10 +57,24 @@ def mass_volume_auc(
         - 'auc': Area under the MV curve
         - 'axis_alpha': The alpha values used (same as mass)
         
+    Examples
+    --------
+    >>> from sklearn.preprocessing import MinMaxScaler
+    >>> from sklearn.ensemble import IsolationForest
+    >>> # Scale data for optimal results
+    >>> scaler = MinMaxScaler()
+    >>> X_scaled = scaler.fit_transform(X)
+    >>> # Fit anomaly detector and compute MV-AUC
+    >>> model = IsolationForest()
+    >>> model.fit(X_scaled)
+    >>> scores = -model.score_samples(X_scaled)
+    >>> result = mass_volume_auc(scores, X_scaled)
+    >>> print(f"MV-AUC: {result['auc']:.3f}")
+    
     Notes
     -----
     The volume values are in absolute data units (not normalized fractions).
-    This means AUC values will scale with the volume_support and are not
+    This means AUC values will scale with the data's bounding box volume and are not
     directly comparable across datasets with different scales.
     """
     scores = validate_scores(scores)
@@ -73,27 +85,30 @@ def mass_volume_auc(
             f"Length mismatch: {len(scores)} scores vs {len(data)} data points"
         )
     
+    # Compute volume support (bounding box volume) internally
+    data_min = data.min(axis=0)
+    data_max = data.max(axis=0)
+    ranges = data_max - data_min
+    # Handle zero ranges (all values identical in a dimension)
+    ranges = np.maximum(ranges, 1e-60)
+    volume_support = float(np.prod(ranges)) + 1e-60
+    
     # Validation for parameters
     if not 0 <= alpha_min < alpha_max <= 1:
         raise ValueError(f"Invalid alpha range: alpha_min={alpha_min}, alpha_max={alpha_max}")
-    
-    if volume_support <= 0:
-        raise ValueError(f"volume_support must be positive, got {volume_support}")
     
     # Warn about potential scaling issues
     if volume_support > 100:
         import warnings
         warnings.warn(
-            f"Large volume_support ({volume_support:.2f}) detected. "
+            f"Large volume support ({volume_support:.2f}) detected. "
             "Consider normalizing your data for better interpretability.",
             UserWarning
         )
 
     rng = np.random.default_rng(random_state)
 
-    # Generate uniform samples in data bounding box
-    data_min = data.min(axis=0)
-    data_max = data.max(axis=0)
+    # Generate uniform samples in data bounding box (reuse computed min/max)
     uniform_samples = rng.uniform(
         data_min, data_max, size=(n_mc_samples, data.shape[1])
     )

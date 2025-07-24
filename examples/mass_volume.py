@@ -2,14 +2,21 @@ import sys
 import optuna
 import numpy as np
 
+rng = np.random.default_rng(seed=42)
+
 from sklearn.datasets import load_breast_cancer
 from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, average_precision_score
+from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr, spearmanr, kendalltau, rankdata
 import labelfree
 
 x, y = load_breast_cancer(return_X_y=True)
+
+# Normalize the data
+scaler = MinMaxScaler()
+x = scaler.fit_transform(x)
 
 x_normal = x[y == 0]
 x_anomaly = x[y == 1]
@@ -40,9 +47,8 @@ def objective(trial):
         model.fit(x_train_normal[train_idx])
 
         val_scores = -model.score_samples(x_train_normal[val_idx])
-        volume_support = labelfree.compute_volume_support(x_train_normal[val_idx])
         mv_result = labelfree.mass_volume_auc(
-            val_scores, x_train_normal[val_idx], volume_support=volume_support,
+            val_scores, x_train_normal[val_idx],
             n_thresholds=50, random_state=42
         )
         cv_scores.append(mv_result["auc"])
@@ -53,9 +59,8 @@ def objective(trial):
 
     roc_auc = roc_auc_score(y_test, test_scores)
     pr_auc = average_precision_score(y_test, test_scores)
-    volume_support = labelfree.compute_volume_support(x_test)
     mv_auc = labelfree.mass_volume_auc(
-        test_scores, x_test, volume_support=volume_support,
+        test_scores, x_test,
         n_thresholds=50, random_state=42
     )["auc"]
 
@@ -66,7 +71,9 @@ def objective(trial):
     return np.mean(cv_scores)
 
 
-study = optuna.create_study(direction="minimize")
+# Create reproducible study with fixed sampler
+sampler = optuna.samplers.TPESampler(seed=42)
+study = optuna.create_study(direction="minimize", sampler=sampler)
 study.optimize(objective, n_trials=100)
 
 completed_trials = [
@@ -175,6 +182,19 @@ pr_assessment = assess_proxy_quality(
 print(f"MV-AUC as proxy for ROC-AUC: {roc_assessment}")
 print(f"MV-AUC as proxy for PR-AUC:  {pr_assessment}")
 
+# Find best parameters for each metric
+best_roc_trial = completed_trials[best_roc_idx]
+best_pr_trial = completed_trials[best_pr_idx]
+best_mv_trial = study.best_trial
+
 print("\nBest parameters (MV-AUC selected):")
-for key, value in study.best_params.items():
+for key, value in best_mv_trial.params.items():
+    print(f"  {key}: {value}")
+
+print("\nBest parameters (ROC-AUC selected):")
+for key, value in best_roc_trial.params.items():
+    print(f"  {key}: {value}")
+
+print("\nBest parameters (PR-AUC selected):")
+for key, value in best_pr_trial.params.items():
     print(f"  {key}: {value}")

@@ -2,14 +2,22 @@ import sys
 import optuna
 import numpy as np
 
+# Create reproducible random number generator
+rng = np.random.default_rng(seed=42)
+
 from sklearn.datasets import load_breast_cancer
 from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, average_precision_score
+from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import pearsonr, spearmanr, kendalltau, rankdata
 import labelfree
 
 x, y = load_breast_cancer(return_X_y=True)
+
+# Normalize the data
+scaler = MinMaxScaler()
+x = scaler.fit_transform(x)
 
 x_normal = x[y == 0]
 x_anomaly = x[y == 1]
@@ -40,7 +48,7 @@ def objective(trial):
         model.fit(x_train_normal[train_idx])
 
         val_scores = -model.score_samples(x_train_normal[val_idx])
-        volume_scores = np.random.randn(1000)
+        volume_scores = rng.standard_normal(1000)
         me_result = labelfree.mass_exceedance_auc(val_scores, volume_scores)
         cv_scores.append(me_result["auc"])
 
@@ -50,7 +58,7 @@ def objective(trial):
 
     roc_auc = roc_auc_score(y_test, test_scores)
     pr_auc = average_precision_score(y_test, test_scores)
-    volume_scores = np.random.randn(1000)
+    volume_scores = rng.standard_normal(1000)
     me_auc = labelfree.mass_exceedance_auc(test_scores, volume_scores)["auc"]
 
     trial.set_user_attr("roc_auc", roc_auc)
@@ -60,7 +68,9 @@ def objective(trial):
     return np.mean(cv_scores)
 
 
-study = optuna.create_study(direction="maximize")
+# Create reproducible study with fixed sampler
+sampler = optuna.samplers.TPESampler(seed=42)
+study = optuna.create_study(direction="maximize", sampler=sampler)
 study.optimize(objective, n_trials=100)
 
 completed_trials = [
@@ -169,6 +179,19 @@ pr_assessment = assess_proxy_quality(
 print(f"ME-AUC as proxy for ROC-AUC: {roc_assessment}")
 print(f"ME-AUC as proxy for PR-AUC:  {pr_assessment}")
 
+# Find best parameters for each metric
+best_roc_trial = completed_trials[best_roc_idx]
+best_pr_trial = completed_trials[best_pr_idx]
+best_me_trial = study.best_trial
+
 print("\nBest parameters (ME-AUC selected):")
-for key, value in study.best_params.items():
+for key, value in best_me_trial.params.items():
+    print(f"  {key}: {value}")
+
+print("\nBest parameters (ROC-AUC selected):")
+for key, value in best_roc_trial.params.items():
+    print(f"  {key}: {value}")
+
+print("\nBest parameters (PR-AUC selected):")
+for key, value in best_pr_trial.params.items():
     print(f"  {key}: {value}")

@@ -31,7 +31,7 @@ def compute_auc(x: np.ndarray, y: np.ndarray) -> float:
     """Compute area under curve using trapezoidal rule."""
     # Sort by x values for proper integration
     idx = np.argsort(x)
-    return float(np.trapz(y[idx], x[idx]))
+    return float(np.trapezoid(y[idx], x[idx]))
 
 
 def compute_volume_support(data: np.ndarray, offset: float = 1e-60) -> float:
