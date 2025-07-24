@@ -40,6 +40,12 @@ def mass_exceedance_auc(
     scores = validate_scores(scores)
     volume_scores = validate_scores(volume_scores, "volume_scores")
 
+    # Parameter validation
+    if volume_support <= 0:
+        raise ValueError("volume_support must be positive")
+    if t_max < 0:
+        raise ValueError("t_max must be non-negative")
+
     n_samples = len(scores)
     n_generated = len(volume_scores)
 

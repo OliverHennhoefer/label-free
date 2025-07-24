@@ -80,7 +80,6 @@ class TestMassVolume:
         # For random detector, volume should be roughly proportional to mass
         # in the high-mass region (since points are uniformly distributed)
         # This is a loose check but better than no validation
-        mass_range = result["mass"].max() - result["mass"].min()
         volume_range = result["volume"].max() - result["volume"].min()
         assert volume_range > 0, "Volume should vary with mass for random detector"
 
@@ -227,6 +226,12 @@ class TestMassVolume:
         assert (
             0.8 <= expected_volume_support <= 1.2
         ), f"Volume support should be ~1.0 for unit square, got {expected_volume_support:.3f}"
+
+        # Also verify the result is valid
+        assert result["auc"] >= 0, "MV-AUC should be non-negative"
+        assert (
+            len(result["volume"]) == 50
+        ), "Should have correct number of volume points"
 
     def test_axis_alpha_mass_alignment(self):
         """Test that axis_alpha and actual mass values align properly."""
