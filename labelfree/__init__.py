@@ -18,7 +18,6 @@ from labelfree.metrics import (
     top_k_stability,
     ireos,
     sireos,
-    sireos_separation,
 )
 from .utils import validate_scores, validate_data, compute_auc, compute_volume_support
 
@@ -30,7 +29,6 @@ __all__ = [
     "mass_exceedance_auc",
     "ireos",
     "sireos",
-    "sireos_separation",
     "ranking_stability",
     "top_k_stability",
     # Utilities
