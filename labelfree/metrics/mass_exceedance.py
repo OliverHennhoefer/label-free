@@ -2,7 +2,8 @@
 
 import numpy as np
 from typing import Dict
-from labelfree.utils import validate_scores, compute_auc
+from labelfree.utils.validation import validate_scores
+from labelfree.utils.computation import compute_auc
 
 
 def mass_exceedance_auc(

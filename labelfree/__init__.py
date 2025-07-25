@@ -19,7 +19,14 @@ from labelfree.metrics import (
     ireos,
     sireos,
 )
-from .utils import validate_scores, validate_data, compute_auc, compute_volume_support
+from .utils import (
+    validate_scores,
+    validate_data,
+    compute_auc,
+    compute_volume_support,
+    normalize_outlier_scores,
+    auto_normalize_scores,
+)
 
 __version__ = "0.0.1"
 
@@ -36,4 +43,7 @@ __all__ = [
     "validate_data",
     "compute_auc",
     "compute_volume_support",
+    # Score normalization
+    "normalize_outlier_scores",
+    "auto_normalize_scores",
 ]

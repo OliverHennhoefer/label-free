@@ -8,8 +8,8 @@ to ensure algorithmic equivalence and correctness.
 
 import numpy as np
 from labelfree.metrics.mass_exceedance import mass_exceedance_auc
-from labelfree.utils import compute_auc
-from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
+from labelfree.utils.computation import compute_auc
+from .shuttle_data import load_shuttle_data, generate_anomaly_scores
 
 
 def reference_excess_mass(
@@ -159,8 +159,8 @@ class TestExcessMassReference:
     def test_basic_equivalence(self):
         """Test basic equivalence between our implementation and reference."""
         # Generate test data
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Generate volume scores
         rng = np.random.default_rng(42)
@@ -202,10 +202,10 @@ class TestExcessMassReference:
 
     def test_perfect_detector_equivalence(self):
         """Test equivalence with perfect anomaly detector."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=300, n_anomalies=30, random_state=123
         )
-        scores = make_anomaly_scores(
+        scores = generate_anomaly_scores(
             X, y, method="perfect", noise_level=0, random_state=123
         )
 
@@ -243,10 +243,10 @@ class TestExcessMassReference:
 
     def test_random_detector_equivalence(self):
         """Test equivalence with random detector."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=400, n_anomalies=40, random_state=456
         )
-        scores = make_anomaly_scores(X, y, method="random", random_state=456)
+        scores = generate_anomaly_scores(X, y, method="random", random_state=456)
 
         # Generate volume scores
         rng = np.random.default_rng(456)
@@ -339,10 +339,10 @@ class TestExcessMassReference:
 
     def test_large_dataset_equivalence(self):
         """Test equivalence with larger dataset."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=800, n_anomalies=80, random_state=777
         )
-        scores = make_anomaly_scores(X, y, method="distance", random_state=777)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=777)
 
         # Generate volume scores
         rng = np.random.default_rng(777)

@@ -3,7 +3,7 @@ import optuna
 import labelfree
 import numpy as np
 
-from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import fetch_openml
 from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, average_precision_score
@@ -12,14 +12,19 @@ from scipy.stats import pearsonr, spearmanr, kendalltau, rankdata
 
 rng = np.random.default_rng(seed=42)
 
-x, y = load_breast_cancer(return_X_y=True)
+x, y = fetch_openml("shuttle", version=1, return_X_y=True, as_frame=False)
+
+# Convert to numeric and handle any missing values
+x = x.astype(np.float32)
+y = y.astype(int)
 
 # Normalize the data
 scaler = MinMaxScaler()
 x = scaler.fit_transform(x)
 
-x_normal = x[y == 0]
-x_anomaly = x[y == 1]
+# Class 1 = normal operations, classes 2-7 = various anomalies
+x_normal = x[y == 1]
+x_anomaly = x[y != 1]
 
 x_train_normal, x_test_normal = train_test_split(
     x_normal, test_size=0.3, random_state=42

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from labelfree.metrics.sireos import sireos
-from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
+from .shuttle_data import load_shuttle_data, generate_anomaly_scores
 
 
 class TestSIREOS:
@@ -15,8 +15,8 @@ class TestSIREOS:
     def test_basic_functionality(self):
         """Test basic SIREOS computation."""
         # Generate data and scores
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Compute SIREOS with default parameters
         sireos_score = sireos(scores, X, quantile=0.01)
@@ -31,8 +31,8 @@ class TestSIREOS:
 
     def test_perfect_detector(self):
         """Test SIREOS for perfect anomaly detector."""
-        X, y = make_blobs_with_anomalies(n_samples=300, n_anomalies=30, random_state=42)
-        scores = make_anomaly_scores(X, y, method="perfect", noise_level=0, random_state=42)
+        X, y = load_shuttle_data(n_samples=300, n_anomalies=30, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="perfect", noise_level=0, random_state=42)
 
         sireos_score = sireos(scores, X, quantile=0.01)
 
@@ -47,8 +47,8 @@ class TestSIREOS:
 
     def test_random_detector(self):
         """Test SIREOS for random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=300, n_anomalies=30, random_state=42)
-        scores = make_anomaly_scores(X, y, method="random", random_state=42)
+        X, y = load_shuttle_data(n_samples=300, n_anomalies=30, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="random", random_state=42)
 
         sireos_score = sireos(scores, X, quantile=0.01)
 
@@ -62,10 +62,10 @@ class TestSIREOS:
 
     def test_perfect_vs_random_comparison(self):
         """Test that perfect detector outperforms random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=400, n_anomalies=40, random_state=42)
+        X, y = load_shuttle_data(n_samples=400, n_anomalies=40, random_state=42)
 
-        perfect_scores = make_anomaly_scores(X, y, method="perfect", noise_level=0, random_state=42)
-        random_scores = make_anomaly_scores(X, y, method="random", random_state=42)
+        perfect_scores = generate_anomaly_scores(X, y, method="perfect", noise_level=0, random_state=42)
+        random_scores = generate_anomaly_scores(X, y, method="random", random_state=42)
 
         perfect_sireos = sireos(perfect_scores, X, quantile=0.01)
         random_sireos = sireos(random_scores, X, quantile=0.01)
@@ -124,8 +124,8 @@ class TestSIREOS:
 
     def test_reproducibility(self):
         """Test that results are reproducible with fixed data."""
-        X, y = make_blobs_with_anomalies(n_samples=150, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=150, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Same inputs should produce identical results
         sireos1 = sireos(scores, X, quantile=0.01)
@@ -135,8 +135,8 @@ class TestSIREOS:
 
     def test_quantile_parameter_sensitivity(self):
         """Test SIREOS behavior with different quantile values."""
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Test different quantile values
         quantiles = [0.001, 0.01, 0.05, 0.1]
@@ -295,8 +295,8 @@ class TestSIREOS:
 
     def test_mathematical_properties(self):
         """Test fundamental mathematical properties of SIREOS."""
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         sireos_score = sireos(scores, X, quantile=0.01)
 

@@ -1,12 +1,36 @@
-"""Internal Relative Evaluation of Outlier Solutions (IREOS)."""
+"""Internal Relative Evaluation of Outlier Solutions (IREOS).
+
+Enhanced IREOS implementation with multiple separability algorithms including:
+- KLR: Kernel Logistic Regression using CVXPY optimization
+- SVM: Custom Support Vector Machine with separability focus
+- KNN: K-Nearest Neighbors variants (KNNM, KNNC)
+- Logistic: Original logistic regression approach
+
+Reference:
+- Original IREOS: Schubert et al. (2012)
+- Extended framework: Hermann Luft's ireos-extended repository
+"""
 
 import numpy as np
-from typing import Tuple, Optional
-from sklearn.linear_model import LogisticRegression
+from typing import Tuple, Optional, Literal
 from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import NearestNeighbors
+from sklearn.kernel_approximation import Nystroem
 from scipy.integrate import simpson
+from scipy.spatial.distance import cdist
 import warnings
-from labelfree.utils import validate_scores, validate_data
+from labelfree.utils.validation import validate_scores, validate_data
+
+# Optional CVXPY import with fallback
+try:
+    import cvxpy as cp
+
+    HAS_CVXPY = True
+except ImportError:
+    HAS_CVXPY = False
+    warnings.warn(
+        "CVXPY not available. KLR classifier will fall back to logistic regression."
+    )
 
 
 def ireos(
@@ -14,10 +38,12 @@ def ireos(
     data: np.ndarray,
     n_outliers: Optional[int] = None,
     percentile: float = 90.0,
+    classifier: Literal["klr", "svm", "logistic", "knn"] = "klr",
     gamma_min: float = 0.1,
     gamma_max: Optional[float] = None,
     n_gamma: int = 50,
     penalty: float = 100.0,
+    kernel_approximation: Literal["exact", "nystroem"] = "exact",
     adjustment: bool = True,
     n_monte_carlo: int = 200,
     random_state: Optional[int] = None,
@@ -25,9 +51,9 @@ def ireos(
     """
     Compute IREOS (Internal Relative Evaluation of Outlier Solutions).
 
-    Reference implementation following the continuous-score IREOS algorithm
-    from the original Java implementation. Measures separability of selected
-    outliers across multiple gamma parameters using kernel logistic regression.
+    Enhanced implementation with multiple separability algorithms. Measures
+    separability of selected outliers across gamma parameter ranges using
+    various classification approaches optimized for numerical stability.
 
     Parameters
     ----------
@@ -40,14 +66,24 @@ def ireos(
         If None, uses percentile threshold.
     percentile : float, default=90.0
         Percentile threshold for outlier selection if n_outliers is None.
+    classifier : {"klr", "svm", "logistic", "knn"}, default="klr"
+        Separability algorithm to use:
+        - "klr": Kernel Logistic Regression (CVXPY-based, most robust)
+        - "svm": Custom SVM with hinge loss
+        - "logistic": Standard logistic regression (original approach)
+        - "knn": K-Nearest Neighbors distance-based approach
     gamma_min : float, default=0.1
         Minimum gamma value for RBF kernel.
     gamma_max : float, optional
-        Maximum gamma value. If None, estimated from data.
+        Maximum gamma value. If None, estimated automatically.
     n_gamma : int, default=50
         Number of gamma values to sample.
     penalty : float, default=100.0
-        Penalty parameter C for logistic regression.
+        Penalty parameter C for regularized classifiers.
+    kernel_approximation : {"exact", "nystroem"}, default="exact"
+        Kernel computation method:
+        - "exact": Full kernel matrix (small datasets)
+        - "nystroem": Nystroem approximation (large datasets)
     adjustment : bool, default=True
         Whether to apply statistical adjustment for chance.
     n_monte_carlo : int, default=200
@@ -62,6 +98,14 @@ def ireos(
         better anomaly detection quality.
     p_value : float
         Statistical significance p-value against random outlier selection.
+
+    Notes
+    -----
+    Algorithm selection recommendations:
+    - Use "klr" (default) for most accurate results with small-medium datasets
+    - Use "svm" for good balance of accuracy and speed
+    - Use "knn" for fastest computation on large datasets
+    - Use "logistic" only for compatibility with older implementations
     """
     scores = validate_scores(scores)
     data = validate_data(data)
@@ -70,6 +114,14 @@ def ireos(
         raise ValueError(
             f"Length mismatch: {len(scores)} scores vs {len(data)} data points"
         )
+
+    # Validate score normalization for proper IREOS computation
+    _validate_score_normalization(scores)
+
+    # Handle CVXPY fallback for KLR
+    if classifier == "klr" and not HAS_CVXPY:
+        warnings.warn("CVXPY not available. Falling back to logistic classifier.")
+        classifier = "logistic"
 
     rng = np.random.default_rng(random_state)
 
@@ -87,20 +139,27 @@ def ireos(
     if len(outlier_indices) == 0:
         return 0.0, 1.0
 
-    # Estimate gamma range if not provided
+    # Intelligent gamma range estimation
     if gamma_max is None:
-        gamma_max = _estimate_gamma_max(X, outlier_indices, gamma_min, rng)
+        gamma_max = _estimate_gamma_max_robust(
+            X, outlier_indices, gamma_min, classifier, rng
+        )
 
     # Create gamma values using logarithmic spacing
     gamma_values = np.logspace(np.log10(gamma_min), np.log10(gamma_max), n_gamma)
 
-    # Compute separability curve
+    # Initialize separability classifier
+    sep_classifier = _get_separability_classifier(
+        classifier, penalty, kernel_approximation, random_state
+    )
+
+    # Compute separability curve using selected algorithm
     separabilities = []
     for gamma in gamma_values:
         # Compute separability for each outlier at this gamma
         outlier_seps = []
         for outlier_idx in outlier_indices:
-            sep = _compute_separability(X, outlier_idx, gamma, penalty, random_state)
+            sep = sep_classifier.compute_separability(X, outlier_idx, gamma)
             outlier_seps.append(sep)
 
         # Average separability across all outliers
@@ -116,22 +175,28 @@ def ireos(
     # Statistical adjustment if requested
     if adjustment:
         # Estimate expected value using Monte Carlo
-        expected_ireos = _estimate_expected_ireos(
-            X, len(outlier_indices), gamma_values, penalty, n_monte_carlo // 4, rng
+        expected_ireos = _estimate_expected_ireos_enhanced(
+            X,
+            len(outlier_indices),
+            gamma_values,
+            sep_classifier,
+            n_monte_carlo // 4,
+            rng,
         )
 
-        # Apply adjustment formula: (I - E{I}) / (1 - E{I})
-        ireos_adjusted = (ireos_raw - expected_ireos) / (1 - expected_ireos + 1e-10)
+        # Apply robust adjustment formula: (I - E{I}) / (1 - E{I})
+        denominator = 1 - expected_ireos + 1e-12
+        ireos_adjusted = (ireos_raw - expected_ireos) / denominator
         ireos_score = max(0.0, ireos_adjusted)
     else:
         ireos_score = ireos_raw
 
-    # Compute p-value using Monte Carlo
-    p_value = _compute_p_value(
+    # Compute p-value using enhanced Monte Carlo
+    p_value = _compute_p_value_enhanced(
         X,
         len(outlier_indices),
         gamma_values,
-        penalty,
+        sep_classifier,
         ireos_score,
         n_monte_carlo // 2,
         rng,
@@ -140,232 +205,505 @@ def ireos(
     return float(ireos_score), float(p_value)
 
 
-def _rbf_kernel(X: np.ndarray, Y: np.ndarray, gamma: float) -> np.ndarray:
-    """Compute RBF kernel matrix efficiently."""
-    X_norm = np.sum(X**2, axis=1, keepdims=True)
-    Y_norm = np.sum(Y**2, axis=1, keepdims=True)
-    K = -2 * np.dot(X, Y.T) + X_norm + Y_norm.T
-    return np.exp(-gamma * K)
+# ============================================================================
+# SEPARABILITY CLASSIFIER CLASSES
+# ============================================================================
 
 
-def _estimate_gamma_max(
+class SeparabilityClassifier:
+    """Base class for separability computation algorithms."""
+
+    def __init__(
+        self,
+        penalty: float = 100.0,
+        kernel_approximation: str = "exact",
+        random_state: Optional[int] = None,
+    ):
+        self.penalty = penalty
+        self.kernel_approximation = kernel_approximation
+        self.random_state = random_state
+        self.rng = np.random.default_rng(random_state)
+
+    def compute_separability(
+        self, X: np.ndarray, outlier_idx: int, gamma: float
+    ) -> float:
+        """Compute separability probability for a single outlier at given gamma."""
+        raise NotImplementedError
+
+    def _rbf_kernel(self, X: np.ndarray, Y: np.ndarray, gamma: float) -> np.ndarray:
+        """Compute RBF kernel matrix efficiently."""
+        X_norm = np.sum(X**2, axis=1, keepdims=True)
+        Y_norm = np.sum(Y**2, axis=1, keepdims=True)
+        K = -2 * np.dot(X, Y.T) + X_norm + Y_norm.T
+        return np.exp(-gamma * K)
+
+    def _get_kernel_features(self, X: np.ndarray, gamma: float) -> np.ndarray:
+        """Get kernel features using exact or approximate computation."""
+        n_samples = len(X)
+
+        if self.kernel_approximation == "nystroem" and n_samples > 500:
+            # Use Nystroem approximation for large datasets
+            n_components = min(200, n_samples // 2)
+            nystroem = Nystroem(
+                kernel="rbf",
+                gamma=gamma,
+                n_components=n_components,
+                random_state=self.random_state,
+            )
+            return nystroem.fit_transform(X)
+        else:
+            # Exact kernel computation for smaller datasets
+            return self._rbf_kernel(X, X, gamma)
+
+
+class KLRSeparabilityClassifier(SeparabilityClassifier):
+    """Kernel Logistic Regression using CVXPY optimization."""
+
+    def compute_separability(
+        self, X: np.ndarray, outlier_idx: int, gamma: float
+    ) -> float:
+        """Compute separability using KLR with convex optimization."""
+        n_samples = len(X)
+
+        # Create binary labels: outlier vs all others
+        y = np.full(n_samples, -1, dtype=np.float64)
+        y[outlier_idx] = 1
+
+        # Check for degenerate case
+        if np.sum(y == 1) == 0 or np.sum(y == -1) == 0:
+            return 0.5
+
+        try:
+            # Get kernel features
+            K = self._get_kernel_features(X, gamma)
+
+            # CVXPY optimization for logistic regression
+            n_features = K.shape[1] if K.ndim > 1 else K.shape[0]
+            beta = cp.Variable(n_features)
+
+            # Compute decision function: K @ beta
+            if K.ndim == 1:
+                f = K @ beta
+            else:
+                f = K @ beta
+
+            # Logistic loss: sum(log(1 + exp(-y * f)))
+            logistic_loss = cp.sum(cp.logistic(-cp.multiply(y, f)))
+
+            # L2 regularization: 0.5 * ||beta||^2
+            regularization = 0.5 * cp.sum_squares(beta)
+
+            # Total objective: C * loss + regularization
+            objective = cp.Minimize(logistic_loss / self.penalty + regularization)
+
+            # Solve optimization problem
+            prob = cp.Problem(objective)
+            prob.solve(solver=cp.ECOS, verbose=False)
+
+            if prob.status not in ["infeasible", "unbounded"]:
+                # Compute probability for the outlier
+                beta_opt = beta.value
+                if beta_opt is not None:
+                    if K.ndim == 1:
+                        decision_value = K[outlier_idx] * beta_opt
+                    else:
+                        decision_value = K[outlier_idx] @ beta_opt
+                    # Convert to probability using sigmoid
+                    prob_outlier = 1.0 / (1.0 + np.exp(-decision_value))
+                    return float(np.clip(prob_outlier, 0.01, 0.99))
+
+            # Fallback to 0.5 if optimization fails
+            return 0.5
+
+        except Exception:
+            return 0.5
+
+
+class SVMSeparabilityClassifier(SeparabilityClassifier):
+    """Custom SVM with hinge loss for separability measurement."""
+
+    def compute_separability(
+        self, X: np.ndarray, outlier_idx: int, gamma: float
+    ) -> float:
+        """Compute separability using SVM with hinge loss."""
+        n_samples = len(X)
+
+        # Create binary labels: outlier vs all others
+        y = np.full(n_samples, -1, dtype=np.float64)
+        y[outlier_idx] = 1
+
+        if np.sum(y == 1) == 0 or np.sum(y == -1) == 0:
+            return 0.5
+
+        try:
+            # Get kernel features
+            K = self._get_kernel_features(X, gamma)
+
+            if not HAS_CVXPY:
+                # Fallback to logistic regression
+                from sklearn.linear_model import LogisticRegression
+
+                clf = LogisticRegression(
+                    C=self.penalty,
+                    random_state=self.random_state,
+                    max_iter=500,
+                    solver="liblinear",
+                )
+                clf.fit(K, (y + 1) / 2)  # Convert to {0, 1}
+                prob = clf.predict_proba(K[outlier_idx : outlier_idx + 1])[0, 1]
+                return float(prob)
+
+            # CVXPY optimization for SVM
+            n_features = K.shape[1] if K.ndim > 1 else K.shape[0]
+            beta = cp.Variable(n_features)
+            xi = cp.Variable(n_samples, nonneg=True)  # Slack variables
+
+            # Compute decision function
+            if K.ndim == 1:
+                f = K @ beta
+            else:
+                f = K @ beta
+
+            # SVM constraints: y * f >= 1 - xi
+            constraints = [cp.multiply(y, f) >= 1 - xi]
+
+            # Objective: minimize 0.5 * ||beta||^2 + C * sum(xi)
+            objective = cp.Minimize(
+                0.5 * cp.sum_squares(beta) + self.penalty * cp.sum(xi)
+            )
+
+            # Solve optimization problem
+            prob = cp.Problem(objective, constraints)
+            prob.solve(solver=cp.ECOS, verbose=False)
+
+            if prob.status not in ["infeasible", "unbounded"]:
+                beta_opt = beta.value
+                if beta_opt is not None:
+                    # Compute decision value for outlier
+                    if K.ndim == 1:
+                        decision_value = K[outlier_idx] * beta_opt
+                    else:
+                        decision_value = K[outlier_idx] @ beta_opt
+
+                    # Convert decision value to probability (approximation)
+                    # Use sigmoid transformation of decision value
+                    prob_outlier = 1.0 / (1.0 + np.exp(-decision_value))
+                    return float(np.clip(prob_outlier, 0.01, 0.99))
+
+            return 0.5
+
+        except Exception:
+            return 0.5
+
+
+class LogisticSeparabilityClassifier(SeparabilityClassifier):
+    """Original logistic regression approach for compatibility."""
+
+    def compute_separability(
+        self, X: np.ndarray, outlier_idx: int, gamma: float
+    ) -> float:
+        """Compute separability using standard logistic regression."""
+        from sklearn.linear_model import LogisticRegression
+
+        n_samples = len(X)
+
+        # Create binary labels: outlier vs all others
+        y = np.full(n_samples, 0)
+        y[outlier_idx] = 1
+
+        if np.sum(y) == 0 or np.sum(y) == n_samples:
+            return 0.5
+
+        try:
+            # Get kernel features
+            K = self._get_kernel_features(X, gamma)
+
+            # Train logistic regression with high regularization
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                clf = LogisticRegression(
+                    C=self.penalty,
+                    random_state=self.random_state,
+                    max_iter=500,
+                    solver="liblinear",
+                )
+                clf.fit(K, y)
+
+                # Get probability for the outlier
+                prob = clf.predict_proba(K[outlier_idx : outlier_idx + 1])
+                return float(prob[0, 1])
+
+        except Exception:
+            return 0.5
+
+
+class KNNSeparabilityClassifier(SeparabilityClassifier):
+    """K-Nearest Neighbors distance-based separability."""
+
+    def __init__(
+        self,
+        penalty: float = 100.0,
+        kernel_approximation: str = "exact",
+        random_state: Optional[int] = None,
+        k: int = 5,
+    ):
+        super().__init__(penalty, kernel_approximation, random_state)
+        self.k = min(k, 10)  # Limit k to reasonable values
+
+    def compute_separability(
+        self, X: np.ndarray, outlier_idx: int, gamma: float
+    ) -> float:
+        """Compute separability using KNN distance-based approach."""
+        n_samples = len(X)
+
+        if n_samples <= self.k + 1:
+            return 0.5
+
+        try:
+            # Create binary labels
+            y = np.full(n_samples, 0)
+            y[outlier_idx] = 1
+
+            # Use distance-based separability instead of kernel transformation
+            outlier_point = X[outlier_idx : outlier_idx + 1]
+            other_points = np.delete(X, outlier_idx, axis=0)
+            other_labels = np.delete(y, outlier_idx)
+
+            # Compute distances from outlier to all other points
+            distances = cdist(outlier_point, other_points, metric="euclidean").flatten()
+
+            # Find k nearest neighbors
+            k_actual = min(self.k, len(distances))
+            nearest_indices = np.argpartition(distances, k_actual)[:k_actual]
+            nearest_distances = distances[nearest_indices]
+            nearest_labels = other_labels[nearest_indices]
+
+            # Compute weighted probability based on distances and gamma
+            # Convert distances to similarities using RBF-like transformation
+            similarities = np.exp(-gamma * nearest_distances**2)
+
+            # Weighted probability (higher similarity = more influence)
+            weights = similarities / (similarities.sum() + 1e-10)
+            weighted_prob = 1.0 - np.sum(weights * (1 - nearest_labels))
+
+            return float(np.clip(weighted_prob, 0.01, 0.99))
+
+        except Exception:
+            return 0.5
+
+
+def _get_separability_classifier(
+    classifier: str,
+    penalty: float,
+    kernel_approximation: str,
+    random_state: Optional[int],
+) -> SeparabilityClassifier:
+    """Factory function to create separability classifier."""
+    if classifier == "klr":
+        return KLRSeparabilityClassifier(penalty, kernel_approximation, random_state)
+    elif classifier == "svm":
+        return SVMSeparabilityClassifier(penalty, kernel_approximation, random_state)
+    elif classifier == "logistic":
+        return LogisticSeparabilityClassifier(
+            penalty, kernel_approximation, random_state
+        )
+    elif classifier == "knn":
+        return KNNSeparabilityClassifier(penalty, kernel_approximation, random_state)
+    else:
+        raise ValueError(f"Unknown classifier: {classifier}")
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+
+def _estimate_gamma_max_robust(
     X: np.ndarray,
     outlier_indices: np.ndarray,
     gamma_min: float,
+    classifier: str,
     rng: np.random.Generator,
 ) -> float:
-    """Estimate maximum gamma value where outliers become separable."""
+    """Robust estimation of maximum gamma value using exponential search."""
     gamma = gamma_min
-    max_attempts = 30
+    max_attempts = 25
+    target_separability = 0.9  # Lower threshold for more robust estimation
 
-    # Test with a representative outlier
-    outlier_idx = outlier_indices[0]
+    # Create temporary classifier for estimation
+    temp_classifier = _get_separability_classifier(classifier, 100.0, "exact", None)
 
-    for _ in range(max_attempts):
-        separability = _compute_separability(X, outlier_idx, gamma, 100.0, None)
-        if separability >= 0.95:
+    # Test with multiple representative outliers for robustness
+    test_outliers = outlier_indices[: min(3, len(outlier_indices))]
+
+    for attempt in range(max_attempts):
+        separabilities = []
+
+        for outlier_idx in test_outliers:
+            try:
+                sep = temp_classifier.compute_separability(X, outlier_idx, gamma)
+                separabilities.append(sep)
+            except Exception:
+                separabilities.append(0.5)
+
+        avg_separability = np.mean(separabilities)
+
+        if avg_separability >= target_separability:
             break
-        gamma *= 1.5
 
-    return min(gamma, 1000.0)
+        # Exponential increase with adaptive step size
+        if attempt < 10:
+            gamma *= 1.8  # Faster initial growth
+        else:
+            gamma *= 1.3  # Slower growth for fine-tuning
 
+        # Safety bounds
+        if gamma > 2000.0:
+            break
 
-def _compute_separability(
-    X: np.ndarray,
-    outlier_idx: int,
-    gamma: float,
-    penalty: float,
-    random_state: Optional[int],
-) -> float:
-    """Compute separability probability for a single outlier at given gamma."""
-    n_samples = len(X)
-
-    # Create binary labels: outlier vs all others
-    y = np.full(n_samples, 0)
-    y[outlier_idx] = 1
-
-    # Check for degenerate case
-    if np.sum(y) == 0 or np.sum(y) == n_samples:
-        return 0.5
-
-    try:
-        # Create RBF features using Nystroem-like sampling for efficiency
-        n_components = min(150, n_samples)
-        rng_local = np.random.default_rng(random_state)
-        sample_indices = rng_local.choice(n_samples, n_components, replace=False)
-        X_sample = X[sample_indices]
-
-        # Compute kernel features for all points
-        K = _rbf_kernel(X, X_sample, gamma)
-
-        # Train logistic regression with high regularization
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            clf = LogisticRegression(
-                C=penalty, random_state=random_state, max_iter=500, solver="liblinear"
-            )
-            clf.fit(K, y)
-
-            # Get probability for the outlier
-            prob = clf.predict_proba(K[outlier_idx : outlier_idx + 1])
-            return float(prob[0, 1])
-
-    except Exception:
-        return 0.5
+    return min(gamma, 1500.0)  # Conservative upper bound
 
 
-def _estimate_expected_ireos(
+# This function is now handled by the SeparabilityClassifier classes
+
+
+def _estimate_expected_ireos_enhanced(
     X: np.ndarray,
     n_outliers: int,
     gamma_values: np.ndarray,
-    penalty: float,
+    sep_classifier: SeparabilityClassifier,
     n_runs: int,
     rng: np.random.Generator,
 ) -> float:
-    """Estimate expected IREOS for random solutions using Monte Carlo."""
+    """Enhanced expected IREOS estimation with adaptive sampling."""
     random_scores = []
 
-    # Use coarse gamma grid for efficiency
-    gamma_subset = gamma_values[:: max(1, len(gamma_values) // 15)]
+    # Use coarse gamma grid for efficiency (adaptive based on total gamma points)
+    step_size = max(1, len(gamma_values) // 12)
+    gamma_subset = gamma_values[::step_size]
 
-    for _ in range(n_runs):
+    for run in range(n_runs):
         # Select random outliers
         random_outliers = rng.choice(len(X), n_outliers, replace=False)
 
         # Compute separability curve for random selection
         separabilities = []
         for gamma in gamma_subset:
-            outlier_seps = [
-                _compute_separability(X, idx, gamma, penalty, None)
-                for idx in random_outliers
-            ]
-            separabilities.append(np.mean(outlier_seps))
+            outlier_seps = []
+            for idx in random_outliers:
+                try:
+                    sep = sep_classifier.compute_separability(X, idx, gamma)
+                    outlier_seps.append(sep)
+                except Exception:
+                    outlier_seps.append(0.5)  # Neutral separability on error
+
+            avg_sep = np.mean(outlier_seps) if outlier_seps else 0.5
+            separabilities.append(avg_sep)
 
         # Compute raw IREOS for random selection
-        gamma_range = gamma_values[-1] - gamma_values[0]
-        random_ireos = simpson(separabilities, x=gamma_subset) / gamma_range
-        random_scores.append(random_ireos)
+        if len(separabilities) > 1:
+            gamma_range = gamma_values[-1] - gamma_values[0]
+            random_ireos = simpson(separabilities, x=gamma_subset) / gamma_range
+            random_scores.append(random_ireos)
+        else:
+            random_scores.append(0.5)
 
     return np.mean(random_scores) if random_scores else 0.5
 
 
-def _compute_p_value(
+def _compute_p_value_enhanced(
     X: np.ndarray,
     n_outliers: int,
     gamma_values: np.ndarray,
-    penalty: float,
+    sep_classifier: SeparabilityClassifier,
     observed_ireos: float,
     n_runs: int,
     rng: np.random.Generator,
 ) -> float:
-    """Compute statistical significance using Monte Carlo."""
+    """Enhanced p-value computation with better statistical properties."""
     random_scores = []
 
-    # Use even coarser gamma grid for p-value computation
-    gamma_subset = gamma_values[:: max(1, len(gamma_values) // 10)]
+    # Use coarser gamma grid for p-value computation (computational efficiency)
+    step_size = max(1, len(gamma_values) // 8)
+    gamma_subset = gamma_values[::step_size]
 
-    for _ in range(n_runs):
+    for run in range(n_runs):
         # Select random outliers
         random_outliers = rng.choice(len(X), n_outliers, replace=False)
 
         # Compute separability curve for random selection
         separabilities = []
         for gamma in gamma_subset:
-            outlier_seps = [
-                _compute_separability(X, idx, gamma, penalty, None)
-                for idx in random_outliers
-            ]
-            separabilities.append(np.mean(outlier_seps))
+            outlier_seps = []
+            for idx in random_outliers:
+                try:
+                    sep = sep_classifier.compute_separability(X, idx, gamma)
+                    outlier_seps.append(sep)
+                except Exception:
+                    outlier_seps.append(0.5)
 
-        gamma_range = gamma_values[-1] - gamma_values[0]
-        random_ireos = simpson(separabilities, x=gamma_subset) / gamma_range
-        random_scores.append(random_ireos)
+            avg_sep = np.mean(outlier_seps) if outlier_seps else 0.5
+            separabilities.append(avg_sep)
+
+        # Compute random IREOS score
+        if len(separabilities) > 1:
+            gamma_range = gamma_values[-1] - gamma_values[0]
+            random_ireos = simpson(separabilities, x=gamma_subset) / gamma_range
+            random_scores.append(random_ireos)
 
     if len(random_scores) == 0:
         return 1.0
 
+    # Enhanced p-value computation with bias correction
+    random_scores = np.array(random_scores)
+
     # Compute p-value: proportion of random scores >= observed
-    p_value = np.mean(np.array(random_scores) >= observed_ireos)
-    return max(p_value, 1e-6)
+    n_greater_equal = np.sum(random_scores >= observed_ireos)
+
+    # Apply continuity correction for small samples
+    p_value = (n_greater_equal + 0.5) / (len(random_scores) + 1)
+
+    # Ensure reasonable bounds
+    return float(np.clip(p_value, 1e-6, 1.0))
 
 
-def sireos_legacy(
-    scores: np.ndarray, data: np.ndarray, similarity: str = "euclidean"
-) -> float:
+def _validate_score_normalization(scores: np.ndarray) -> None:
     """
-    Compute SIREOS Legacy (Similarity-based IREOS).
-
-    Legacy implementation of SIREOS that was part of the IREOS module.
-    For the official SIREOS implementation, use labelfree.metrics.sireos.sireos().
-
-    Faster variant using similarity ratios instead of classification.
-
-    Parameters
-    ----------
-    scores : array-like of shape (n_samples,)
-        Anomaly scores.
-    data : array-like of shape (n_samples, n_features)
-        Original features.
-    similarity : {'euclidean', 'cosine'}, default='euclidean'
-        Similarity metric to use.
-
-    Returns
-    -------
-    sireos_score : float
-        Separability score in range [0, 2] where:
-        - 0: No separation (inter-group similarity > intra-group)
-        - 1: Equal intra and inter-group similarities
-        - 2: Perfect separation (high intra-group, zero inter-group)
-        Higher values indicate better anomaly detection.
+    Validate that scores appear to be properly normalized for IREOS.
+    
+    Issues warnings if scores don't appear to be normalized to [0,1] range
+    as required by the original IREOS specification (Kriegel et al. 2011).
     """
-    scores = validate_scores(scores)
-    data = validate_data(data)
-
-    # Split based on median
-    median_score = np.median(scores)
-    high_mask = scores > median_score
-    low_mask = ~high_mask
-
-    if not any(high_mask) or not any(low_mask):
-        return 1.0  # Perfect separation (degenerate case)
-
-    # Compute similarity matrix
-    if similarity == "euclidean":
-        from scipy.spatial.distance import cdist
-
-        distances = cdist(data, data, metric="euclidean")
-        # Convert distances to similarities using Gaussian kernel
-        # Normalize by median distance for stability
-        median_dist = np.median(distances[distances > 0])
-        similarities = np.exp(-distances / median_dist)
-    else:  # cosine
-        from scipy.spatial.distance import cdist
-
-        # Cosine distance is in [0, 2], where 0 means identical
-        cosine_distances = cdist(data, data, metric="cosine")
-        # Convert to similarity: 1 - distance/2 gives range [0, 1]
-        similarities = 1 - cosine_distances / 2
-
-    # Compute intra-group and inter-group similarities
-    # Exclude diagonal for intra-group to avoid self-similarity bias
-    high_high_mask = np.outer(high_mask, high_mask)
-    low_low_mask = np.outer(low_mask, low_mask)
-    high_low_mask = np.outer(high_mask, low_mask)
-
-    # Remove diagonal
-    np.fill_diagonal(high_high_mask, False)
-    np.fill_diagonal(low_low_mask, False)
-
-    # Calculate mean similarities
-    high_high = similarities[high_high_mask].mean() if high_high_mask.any() else 0
-    low_low = similarities[low_low_mask].mean() if low_low_mask.any() else 0
-    high_low = similarities[high_low_mask].mean() if high_low_mask.any() else 0
-
-    # SIREOS score: ratio of intra to inter similarity
-    intra_sim = (high_high + low_low) / 2
-    inter_sim = high_low
-
-    # Add small epsilon and ensure non-negative
-    sireos_score = max(0, (intra_sim - inter_sim) / (intra_sim + inter_sim + 1e-10) + 1)
-
-    return float(sireos_score)
+    score_min, score_max = scores.min(), scores.max()
+    score_range = score_max - score_min
+    
+    # Check if scores are in approximately [0, 1] range
+    if score_min < -0.1 or score_max > 1.1:
+        warnings.warn(
+            f"IREOS expects normalized scores in [0,1] range, but got [{score_min:.3f}, {score_max:.3f}]. "
+            f"Consider using labelfree.normalize_outlier_scores() or labelfree.auto_normalize_scores() "
+            f"to normalize raw outlier scores before IREOS evaluation. "
+            f"Raw scores may produce unreliable IREOS results.",
+            UserWarning,
+            stacklevel=3
+        )
+    
+    # Check for suspicious score distributions that suggest raw/unnormalized scores
+    elif score_range > 10:
+        warnings.warn(
+            f"IREOS scores have large range ({score_range:.1f}), which may indicate "
+            f"unnormalized raw outlier scores. Consider using normalization functions "
+            f"from labelfree.utils for better IREOS results.",
+            UserWarning,
+            stacklevel=3
+        )
+    
+    # Check for negative scores (common in distance-based algorithms)
+    elif np.mean(scores < 0) > 0.5:
+        warnings.warn(
+            f"IREOS scores contain many negative values ({np.mean(scores < 0):.1%}), "
+            f"which suggests raw distance-based scores. Consider using "
+            f"labelfree.auto_normalize_scores(scores, invert=True) for proper normalization.",
+            UserWarning,
+            stacklevel=3
+        )

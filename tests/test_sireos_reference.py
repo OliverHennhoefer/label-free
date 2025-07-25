@@ -9,7 +9,7 @@ to ensure algorithmic equivalence and correctness.
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
 from labelfree.metrics.sireos import sireos
-from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
+from .shuttle_data import load_shuttle_data, generate_anomaly_scores
 
 
 def reference_sireos(scores, data, quantile=0.01):
@@ -131,8 +131,8 @@ class TestSIREOSReference:
     def test_basic_equivalence(self):
         """Test basic equivalence between our implementation and reference."""
         # Generate test data
-        X, y = make_blobs_with_anomalies(n_samples=100, n_anomalies=10, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=100, n_anomalies=10, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Parameters
         quantile = 0.01
@@ -154,8 +154,8 @@ class TestSIREOSReference:
 
     def test_perfect_detector_equivalence(self):
         """Test equivalence with perfect anomaly detector."""
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=123)
-        scores = make_anomaly_scores(X, y, method="perfect", noise_level=0, random_state=123)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=123)
+        scores = generate_anomaly_scores(X, y, method="perfect", noise_level=0, random_state=123)
 
         # Parameters
         quantile = 0.01
@@ -176,8 +176,8 @@ class TestSIREOSReference:
 
     def test_random_detector_equivalence(self):
         """Test equivalence with random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=150, n_anomalies=15, random_state=456)
-        scores = make_anomaly_scores(X, y, method="random", random_state=456)
+        X, y = load_shuttle_data(n_samples=150, n_anomalies=15, random_state=456)
+        scores = generate_anomaly_scores(X, y, method="random", random_state=456)
 
         # Parameters
         quantile = 0.01
@@ -383,8 +383,8 @@ class TestSIREOSReference:
 
     def test_large_dataset_equivalence(self):
         """Test equivalence with larger dataset."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=777)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=777)
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=777)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=777)
 
         # Both implementations
         our_result = sireos(scores, X, quantile=0.01)

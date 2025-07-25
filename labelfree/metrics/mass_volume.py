@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Optional, Dict, Callable
-from labelfree.utils import validate_scores, validate_data, compute_auc
+from labelfree.utils.validation import validate_scores, validate_data
+from labelfree.utils.computation import compute_auc
 
 
 def mass_volume_auc(

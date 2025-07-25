@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from labelfree.metrics.mass_exceedance import mass_exceedance_auc
-from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
+from .shuttle_data import load_shuttle_data, generate_anomaly_scores
 
 
 class TestExcessMass:
@@ -16,8 +16,8 @@ class TestExcessMass:
     def test_basic_functionality(self):
         """Test basic EM curve computation."""
         # Generate data and scores
-        X, y = make_blobs_with_anomalies(n_samples=300, n_anomalies=30, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=300, n_anomalies=30, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Generate volume scores (scores on uniform samples)
         rng = np.random.default_rng(42)
@@ -45,8 +45,8 @@ class TestExcessMass:
 
     def test_perfect_detector(self):
         """Test EM curve for perfect anomaly detector."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
-        scores = make_anomaly_scores(
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=42)
+        scores = generate_anomaly_scores(
             X, y, method="perfect", noise_level=0, random_state=42
         )
 
@@ -74,8 +74,8 @@ class TestExcessMass:
 
     def test_random_detector(self):
         """Test EM curve for random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
-        scores = make_anomaly_scores(X, y, method="random", random_state=42)
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="random", random_state=42)
 
         # Generate volume scores
         rng = np.random.default_rng(42)
@@ -96,12 +96,12 @@ class TestExcessMass:
 
     def test_perfect_vs_random_comparison(self):
         """Test that perfect detector significantly outperforms random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=400, n_anomalies=40, random_state=42)
+        X, y = load_shuttle_data(n_samples=400, n_anomalies=40, random_state=42)
 
-        perfect_scores = make_anomaly_scores(
+        perfect_scores = generate_anomaly_scores(
             X, y, method="perfect", noise_level=0, random_state=42
         )
-        random_scores = make_anomaly_scores(X, y, method="random", random_state=42)
+        random_scores = generate_anomaly_scores(X, y, method="random", random_state=42)
 
         # Use same volume scores for fair comparison
         rng = np.random.default_rng(42)
@@ -161,8 +161,8 @@ class TestExcessMass:
 
     def test_reproducibility(self):
         """Test that results are reproducible with fixed parameters."""
-        X, y = make_blobs_with_anomalies(n_samples=200, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Generate same volume scores
         rng = np.random.default_rng(42)
@@ -330,8 +330,8 @@ class TestExcessMass:
 
     def test_em_curve_mathematical_properties(self):
         """Test fundamental mathematical properties of EM curve."""
-        X, y = make_blobs_with_anomalies(n_samples=300, n_anomalies=30, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=300, n_anomalies=30, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         rng = np.random.default_rng(42)
         volume_scores = rng.standard_normal(1000)

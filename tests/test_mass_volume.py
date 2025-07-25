@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from labelfree.metrics.mass_volume import mass_volume_auc
-from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
+from .shuttle_data import load_shuttle_data, generate_anomaly_scores
 
 
 class TestMassVolume:
@@ -14,8 +14,8 @@ class TestMassVolume:
     def test_basic_functionality(self):
         """Test basic MV curve computation."""
         # Generate simple data
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Compute MV curve with default high-mass region
         result = mass_volume_auc(
@@ -48,8 +48,8 @@ class TestMassVolume:
 
     def test_perfect_detector(self):
         """Test MV curve for perfect anomaly detector."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
-        scores = make_anomaly_scores(X, y, method="perfect", noise_level=0)
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="perfect", noise_level=0)
 
         result = mass_volume_auc(scores, X, n_thresholds=100, random_state=42)
 
@@ -69,8 +69,8 @@ class TestMassVolume:
 
     def test_random_detector(self):
         """Test MV curve for random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
-        scores = make_anomaly_scores(X, y, method="random", random_state=42)
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="random", random_state=42)
 
         result = mass_volume_auc(scores, X, n_thresholds=100, random_state=42)
 
@@ -107,8 +107,8 @@ class TestMassVolume:
 
     def test_reproducibility(self):
         """Test that results are reproducible with fixed seed."""
-        X, y = make_blobs_with_anomalies(random_state=42)
-        scores = make_anomaly_scores(X, y, random_state=42)
+        X, y = load_shuttle_data(random_state=42)
+        scores = generate_anomaly_scores(X, y, random_state=42)
 
         result1 = mass_volume_auc(scores, X, random_state=42)
         result2 = mass_volume_auc(scores, X, random_state=42)
@@ -128,12 +128,12 @@ class TestMassVolume:
 
     def test_perfect_vs_random_comparison(self):
         """Test that perfect detector significantly outperforms random detector."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=42)
 
-        perfect_scores = make_anomaly_scores(
+        perfect_scores = generate_anomaly_scores(
             X, y, method="perfect", noise_level=0, random_state=42
         )
-        random_scores = make_anomaly_scores(X, y, method="random", random_state=42)
+        random_scores = generate_anomaly_scores(X, y, method="random", random_state=42)
 
         perfect_result = mass_volume_auc(
             perfect_scores, X, n_thresholds=100, random_state=42
@@ -235,8 +235,8 @@ class TestMassVolume:
 
     def test_axis_alpha_mass_alignment(self):
         """Test that axis_alpha and actual mass values align properly."""
-        X, y = make_blobs_with_anomalies(n_samples=500, n_anomalies=50, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=500, n_anomalies=50, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         result = mass_volume_auc(
             scores, X, alpha_min=0.95, alpha_max=0.999, n_thresholds=20, random_state=42

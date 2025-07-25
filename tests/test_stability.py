@@ -1,6 +1,6 @@
 import numpy as np
 from labelfree.metrics.stability import ranking_stability, top_k_stability
-from .synthetic_data import make_blobs_with_anomalies
+from .shuttle_data import load_shuttle_data
 
 
 class TestStability:
@@ -8,7 +8,7 @@ class TestStability:
 
     def test_ranking_stability(self):
         """Test ranking stability measurement."""
-        X, y = make_blobs_with_anomalies(n_samples=500, random_state=42)
+        X, y = load_shuttle_data(n_samples=500, random_state=42)
 
         # Simple scoring function
         def score_func(data):
@@ -30,7 +30,7 @@ class TestStability:
 
     def test_top_k_stability(self):
         """Test top-k stability measurement."""
-        X, y = make_blobs_with_anomalies(n_samples=500, random_state=42)
+        X, y = load_shuttle_data(n_samples=500, random_state=42)
 
         def score_func(data):
             center = data.mean(axis=0)

@@ -8,8 +8,8 @@ to ensure algorithmic equivalence and correctness.
 
 import numpy as np
 from labelfree.metrics.mass_volume import mass_volume_auc
-from labelfree.utils import compute_volume_support
-from .synthetic_data import make_blobs_with_anomalies, make_anomaly_scores
+from labelfree.utils.computation import compute_volume_support
+from .shuttle_data import load_shuttle_data, generate_anomaly_scores
 
 
 def reference_mass_volume(
@@ -200,8 +200,8 @@ class TestMassVolumeReference:
     def test_basic_equivalence(self):
         """Test basic equivalence between our implementation and reference."""
         # Generate test data
-        X, y = make_blobs_with_anomalies(n_samples=200, n_anomalies=20, random_state=42)
-        scores = make_anomaly_scores(X, y, method="distance", random_state=42)
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=42)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=42)
 
         # Shared parameters
         alpha_min, alpha_max = 0.9, 0.999
@@ -252,10 +252,10 @@ class TestMassVolumeReference:
 
     def test_perfect_detector_equivalence(self):
         """Test equivalence with perfect anomaly detector."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=300, n_anomalies=30, random_state=123
         )
-        scores = make_anomaly_scores(
+        scores = generate_anomaly_scores(
             X, y, method="perfect", noise_level=0, random_state=123
         )
 
@@ -298,10 +298,10 @@ class TestMassVolumeReference:
 
     def test_random_detector_equivalence(self):
         """Test equivalence with random detector."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=400, n_anomalies=40, random_state=456
         )
-        scores = make_anomaly_scores(X, y, method="random", random_state=456)
+        scores = generate_anomaly_scores(X, y, method="random", random_state=456)
 
         # Parameters
         alpha_min, alpha_max = 0.9, 0.99
@@ -413,10 +413,10 @@ class TestMassVolumeReference:
 
     def test_single_threshold_equivalence(self):
         """Test equivalence with minimal number of thresholds."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=100, n_anomalies=10, random_state=111
         )
-        scores = make_anomaly_scores(X, y, method="distance", random_state=111)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=111)
 
         # Minimal thresholds
         n_thresholds = 2
@@ -456,10 +456,10 @@ class TestMassVolumeReference:
 
     def test_large_dataset_equivalence(self):
         """Test equivalence with larger dataset."""
-        X, y = make_blobs_with_anomalies(
+        X, y = load_shuttle_data(
             n_samples=1000, n_anomalies=100, random_state=777
         )
-        scores = make_anomaly_scores(X, y, method="distance", random_state=777)
+        scores = generate_anomaly_scores(X, y, method="distance", random_state=777)
 
         # Parameters
         alpha_min, alpha_max = 0.92, 0.998
