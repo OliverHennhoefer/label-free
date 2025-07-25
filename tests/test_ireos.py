@@ -157,9 +157,7 @@ class TestIREOS:
 
     def test_perfect_vs_random_detector(self):
         """Test that perfect detectors score higher than random detectors."""
-        X, y = load_shuttle_data(
-            n_samples=150, n_anomalies=15, random_state=123
-        )
+        X, y = load_shuttle_data(n_samples=150, n_anomalies=15, random_state=123)
 
         # Perfect detector
         perfect_scores = generate_anomaly_scores(
@@ -226,9 +224,7 @@ class TestIREOS:
     def test_kernel_approximation(self):
         """Test kernel approximation methods."""
         # Generate larger dataset to trigger Nystroem approximation
-        X, y = load_shuttle_data(
-            n_samples=200, n_anomalies=20, random_state=789
-        )
+        X, y = load_shuttle_data(n_samples=200, n_anomalies=20, random_state=789)
         scores = generate_anomaly_scores(X, y, method="distance", random_state=789)
 
         # Test exact vs Nystroem approximation
@@ -328,9 +324,7 @@ class TestIREOS:
 
     def test_adjustment_mechanism(self):
         """Test statistical adjustment mechanism."""
-        X, y = load_shuttle_data(
-            n_samples=100, n_anomalies=10, random_state=222
-        )
+        X, y = load_shuttle_data(n_samples=100, n_anomalies=10, random_state=222)
         scores = generate_anomaly_scores(X, y, method="distance", random_state=222)
 
         # With adjustment
@@ -407,7 +401,9 @@ class TestIREOS:
                 n_features=case["n_features"],
                 random_state=42 + i,
             )
-            scores = generate_anomaly_scores(X, y, method="distance", random_state=42 + i)
+            scores = generate_anomaly_scores(
+                X, y, method="distance", random_state=42 + i
+            )
 
             for classifier in ["logistic", "klr", "svm", "knn"]:
                 try:
@@ -439,9 +435,7 @@ class TestIREOS:
 
     def test_performance_comparison(self):
         """Compare performance characteristics of different classifiers."""
-        X, y = load_shuttle_data(
-            n_samples=100, n_anomalies=10, random_state=444
-        )
+        X, y = load_shuttle_data(n_samples=100, n_anomalies=10, random_state=444)
 
         # Test with different detector quality levels
         detector_types = ["perfect", "distance", "random"]

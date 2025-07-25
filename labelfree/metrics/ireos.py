@@ -14,7 +14,6 @@ Reference:
 import numpy as np
 from typing import Tuple, Optional, Literal
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import NearestNeighbors
 from sklearn.kernel_approximation import Nystroem
 from scipy.integrate import simpson
 from scipy.spatial.distance import cdist
@@ -670,13 +669,13 @@ def _compute_p_value_enhanced(
 def _validate_score_normalization(scores: np.ndarray) -> None:
     """
     Validate that scores appear to be properly normalized for IREOS.
-    
+
     Issues warnings if scores don't appear to be normalized to [0,1] range
     as required by the original IREOS specification (Kriegel et al. 2011).
     """
     score_min, score_max = scores.min(), scores.max()
     score_range = score_max - score_min
-    
+
     # Check if scores are in approximately [0, 1] range
     if score_min < -0.1 or score_max > 1.1:
         warnings.warn(
@@ -685,9 +684,9 @@ def _validate_score_normalization(scores: np.ndarray) -> None:
             f"to normalize raw outlier scores before IREOS evaluation. "
             f"Raw scores may produce unreliable IREOS results.",
             UserWarning,
-            stacklevel=3
+            stacklevel=3,
         )
-    
+
     # Check for suspicious score distributions that suggest raw/unnormalized scores
     elif score_range > 10:
         warnings.warn(
@@ -695,9 +694,9 @@ def _validate_score_normalization(scores: np.ndarray) -> None:
             f"unnormalized raw outlier scores. Consider using normalization functions "
             f"from labelfree.utils for better IREOS results.",
             UserWarning,
-            stacklevel=3
+            stacklevel=3,
         )
-    
+
     # Check for negative scores (common in distance-based algorithms)
     elif np.mean(scores < 0) > 0.5:
         warnings.warn(
@@ -705,5 +704,5 @@ def _validate_score_normalization(scores: np.ndarray) -> None:
             f"which suggests raw distance-based scores. Consider using "
             f"labelfree.auto_normalize_scores(scores, invert=True) for proper normalization.",
             UserWarning,
-            stacklevel=3
+            stacklevel=3,
         )

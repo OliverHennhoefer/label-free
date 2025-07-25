@@ -444,6 +444,7 @@ class TestIREOSReference:
         for gamma in gamma_values:
             # Our actual KLR implementation from labelfree.metrics.ireos
             from labelfree.metrics.ireos import KLRSeparabilityClassifier
+
             our_classifier = KLRSeparabilityClassifier(penalty=penalty)
             our_sep = our_classifier.compute_separability(X_std, outlier_idx, gamma)
 
@@ -456,7 +457,9 @@ class TestIREOSReference:
 
             # Should be reasonably close (different implementations may have small differences)
             relative_error = abs(our_sep - ref_sep) / max(ref_sep, 1e-6)
-            assert relative_error < 0.1, f"KLR implementations too different: {relative_error:.6f}"
+            assert (
+                relative_error < 0.1
+            ), f"KLR implementations too different: {relative_error:.6f}"
 
     def test_svm_separability_equivalence(self):
         """Test SVM separability computation against reference."""
@@ -477,6 +480,7 @@ class TestIREOSReference:
         for gamma in gamma_values:
             # Our actual SVM implementation from labelfree.metrics.ireos
             from labelfree.metrics.ireos import SVMSeparabilityClassifier
+
             our_classifier = SVMSeparabilityClassifier(penalty=penalty)
             our_sep = our_classifier.compute_separability(X_std, outlier_idx, gamma)
 
@@ -489,14 +493,14 @@ class TestIREOSReference:
 
             # Should be reasonably close (different implementations may have small differences)
             relative_error = abs(our_sep - ref_sep) / max(ref_sep, 1e-6)
-            assert relative_error < 0.1, f"SVM implementations too different: {relative_error:.6f}"
+            assert (
+                relative_error < 0.1
+            ), f"SVM implementations too different: {relative_error:.6f}"
 
     def test_complete_ireos_equivalence(self):
         """Test complete IREOS computation against reference."""
         # Generate test data
-        X, y = load_shuttle_data(
-            n_samples=100, n_anomalies=10, random_state=456
-        )
+        X, y = load_shuttle_data(n_samples=100, n_anomalies=10, random_state=456)
         scores = generate_anomaly_scores(X, y, method="distance", random_state=456)
 
         # Test with reduced parameters for speed
@@ -515,7 +519,7 @@ class TestIREOSReference:
         assert 0.0 <= ref_p <= 1.0, f"Invalid reference p-value: {ref_p}"
         assert 0.0 <= our_p <= 1.0, f"Invalid our p-value: {our_p}"
 
-        print(f"\nComplete IREOS Comparison:")
+        print("\nComplete IREOS Comparison:")
         print(f"Reference: IREOS={ref_ireos:.4f}, p-value={ref_p:.4f}")
         print(f"Our impl:  IREOS={our_ireos:.4f}, p-value={our_p:.4f}")
 
@@ -584,7 +588,7 @@ class TestIREOSReference:
             random_state=42,
         )
 
-        print(f"\nStatistical Adjustment:")
+        print("\nStatistical Adjustment:")
         print(f"Adjusted: IREOS={adj_ireos:.4f}, p-value={adj_p:.4f}")
         print(f"Raw:      IREOS={raw_ireos:.4f}, p-value={raw_p:.4f}")
 
@@ -650,7 +654,7 @@ class TestIREOSReference:
             assert 0.0 <= ireos_score <= 1.0, f"Invalid {classifier} IREOS"
             assert 0.0 <= p_value <= 1.0, f"Invalid {classifier} p-value"
 
-        print(f"\nClassifier Comparison:")
+        print("\nClassifier Comparison:")
         for classifier, (score, p_val) in results.items():
             print(f"  {classifier}: IREOS={score:.4f}, p-value={p_val:.4f}")
 
@@ -659,7 +663,7 @@ class TestIREOSReference:
         # Allow zero results since CVXPY optimization can be sensitive
         assert all(0.0 <= s <= 1.0 for s in scores_list), "Invalid IREOS scores"
         print(
-            f"  Note: Some classifiers may return 0.0 due to CVXPY optimization sensitivity"
+            "  Note: Some classifiers may return 0.0 due to CVXPY optimization sensitivity"
         )
 
     def test_reproducibility(self):

@@ -252,9 +252,7 @@ class TestMassVolumeReference:
 
     def test_perfect_detector_equivalence(self):
         """Test equivalence with perfect anomaly detector."""
-        X, y = load_shuttle_data(
-            n_samples=300, n_anomalies=30, random_state=123
-        )
+        X, y = load_shuttle_data(n_samples=300, n_anomalies=30, random_state=123)
         scores = generate_anomaly_scores(
             X, y, method="perfect", noise_level=0, random_state=123
         )
@@ -298,9 +296,7 @@ class TestMassVolumeReference:
 
     def test_random_detector_equivalence(self):
         """Test equivalence with random detector."""
-        X, y = load_shuttle_data(
-            n_samples=400, n_anomalies=40, random_state=456
-        )
+        X, y = load_shuttle_data(n_samples=400, n_anomalies=40, random_state=456)
         scores = generate_anomaly_scores(X, y, method="random", random_state=456)
 
         # Parameters
@@ -413,9 +409,7 @@ class TestMassVolumeReference:
 
     def test_single_threshold_equivalence(self):
         """Test equivalence with minimal number of thresholds."""
-        X, y = load_shuttle_data(
-            n_samples=100, n_anomalies=10, random_state=111
-        )
+        X, y = load_shuttle_data(n_samples=100, n_anomalies=10, random_state=111)
         scores = generate_anomaly_scores(X, y, method="distance", random_state=111)
 
         # Minimal thresholds
@@ -456,9 +450,7 @@ class TestMassVolumeReference:
 
     def test_large_dataset_equivalence(self):
         """Test equivalence with larger dataset."""
-        X, y = load_shuttle_data(
-            n_samples=1000, n_anomalies=100, random_state=777
-        )
+        X, y = load_shuttle_data(n_samples=1000, n_anomalies=100, random_state=777)
         scores = generate_anomaly_scores(X, y, method="distance", random_state=777)
 
         # Parameters

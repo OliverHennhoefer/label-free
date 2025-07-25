@@ -19,15 +19,15 @@ x = x.astype(np.float32)
 y = y.astype(int)
 
 # Normalize the data
-scaler = MinMaxScaler()
-x = scaler.fit_transform(x)
+#scaler = MinMaxScaler()
+#x = scaler.fit_transform(x)
 
 # Class 1 = normal operations, classes 2-7 = various anomalies
 x_normal = x[y == 1]
 x_anomaly = x[y != 1]
 
 x_train_normal, x_test_normal = train_test_split(
-    x_normal, test_size=0.3, random_state=42
+    x_normal, test_size=0.5, random_state=42
 )
 
 x_test = np.vstack([x_test_normal, x_anomaly])
@@ -52,9 +52,7 @@ def objective(trial):
         model.fit(x_train_normal[train_idx])
 
         val_scores = -model.score_samples(x_train_normal[val_idx])
-        sireos_score = labelfree.sireos(
-            val_scores, x_train_normal[val_idx]
-        )
+        sireos_score = labelfree.sireos(val_scores, x_train_normal[val_idx])
         cv_scores.append(sireos_score)
 
     model = IsolationForest(**params, contamination=sys.float_info.min, random_state=42)

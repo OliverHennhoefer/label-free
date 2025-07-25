@@ -82,7 +82,7 @@ def objective(trial):
         # Since we can't use IREOS directly on normal-only data, we'll use
         # score variance as a proxy (higher variance suggests better separability)
         val_scores = -model.score_samples(x_train_normal[val_idx])
-        
+
         # Score variance as proxy for separability potential
         # Models with higher score variance on normal data may better distinguish anomalies
         score_variance = np.var(val_scores)
@@ -95,9 +95,11 @@ def objective(trial):
 
     roc_auc = roc_auc_score(y_test, test_scores)
     pr_auc = average_precision_score(y_test, test_scores)
-    
+
     # Normalize test scores for proper IREOS evaluation
-    test_scores_normalized = labelfree.auto_normalize_scores(test_scores, "isolation_forest")
+    test_scores_normalized = labelfree.auto_normalize_scores(
+        test_scores, "isolation_forest"
+    )
     # Use IREOS on mixed test data (this will produce meaningful results)
     ireos_auc, _ = labelfree.ireos(
         test_scores_normalized,
@@ -155,7 +157,9 @@ best_model = IsolationForest(
 best_model.fit(x_train_normal)
 best_test_scores = -best_model.score_samples(x_test)
 # Normalize scores for classifier comparison
-best_test_scores_normalized = labelfree.auto_normalize_scores(best_test_scores, "isolation_forest")
+best_test_scores_normalized = labelfree.auto_normalize_scores(
+    best_test_scores, "isolation_forest"
+)
 
 classifiers = ["logistic", "klr", "svm", "knn"]
 for classifier in classifiers:

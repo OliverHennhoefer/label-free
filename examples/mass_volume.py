@@ -7,7 +7,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.preprocessing import MinMaxScaler
-from scipy.stats import pearsonr, spearmanr, kendalltau, rankdata
+from scipy.stats import spearmanr
 import labelfree
 
 rng = np.random.default_rng(seed=42)
@@ -95,6 +95,6 @@ print("Mass-Volume AUC Evaluation")
 print("=" * 50)
 print(f"MV-AUC vs ROC-AUC correlation: {spearman_roc_mv:.3f}")
 print(f"MV-AUC vs PR-AUC correlation:  {spearman_pr_mv:.3f}")
-print(f"\nBest parameters (MV-AUC selected):")
+print("\nBest parameters (MV-AUC selected):")
 for key, value in study.best_trial.params.items():
     print(f"  {key}: {value}")
