@@ -1,1 +1,3 @@
-# Label-Free Metrics - Clean Implementation
+# labelfree
+
+Label-free metrics for unsupervised anomaly detector evaluation.
