@@ -1,161 +1,121 @@
-"""Ranking stability metrics."""
+"""Ranking stability metrics for repeated anomaly-score rankings."""
+
+from __future__ import annotations
+
+import math
+from itertools import combinations
 
 import numpy as np
-from typing import Dict, List, Callable, Optional
-from scipy.stats import kendalltau, spearmanr
-from labelfree.utils.validation import validate_data
+from scipy.optimize import minimize
+from scipy.stats import beta as beta_distribution
+
+from labelfree.utils.validation import average_ranks, orient_scores
 
 
-def ranking_stability(
-    score_func: Callable[[np.ndarray], np.ndarray],
-    data: np.ndarray,
-    n_subsamples: int = 20,
-    subsample_ratio: float = 0.8,
-    method: str = "kendall",
-    random_state: Optional[int] = None,
-) -> Dict[str, float]:
-    """
-    Measure stability of anomaly rankings under data perturbation.
+def ranking_stability_score(
+    score_matrix,
+    *,
+    contamination: float,
+    psi: float = 0.85,
+    score_polarity: str = "higher_is_anomalous",
+) -> float:
+    """Perini-Galvin-Vercruyssen ranking stability. Higher is better."""
+    ranks = _normalized_rank_matrix(score_matrix, score_polarity=score_polarity)
+    _check_contamination(contamination)
+    if not 0 < psi < 1:
+        raise ValueError("psi must be between 0 and 1")
 
-    Parameters
-    ----------
-    score_func : callable
-        Function that takes data and returns anomaly scores.
-    data : array-like of shape (n_samples, n_features)
-        Dataset to evaluate on.
-    n_subsamples : int, default=20
-        Number of subsamples to generate.
-    subsample_ratio : float, default=0.8
-        Fraction of data in each subsample.
-    method : {'kendall', 'spearman'}, default='kendall'
-        Correlation method to use.
-    random_state : int, optional
-        Random seed.
+    alpha, beta = _beta_parameters(contamination, psi)
+    rank_min = ranks.min(axis=0)
+    rank_max = ranks.max(axis=0)
+    rank_std = ranks.std(axis=0)
+    weight = beta_distribution.cdf(rank_max, alpha, beta) - beta_distribution.cdf(
+        rank_min,
+        alpha,
+        beta,
+    )
+    n_samples = ranks.shape[1]
+    random_std = math.sqrt((n_samples + 1) * (n_samples - 1) / (12 * n_samples**2))
+    instability = np.minimum(1.0, weight * rank_std / random_std)
+    return float(np.clip(1.0 - instability.mean(), 0.0, 1.0))
 
-    Returns
-    -------
-    dict with keys:
-        - 'mean': Mean correlation between rankings
-        - 'std': Standard deviation of correlations
-        - 'min': Minimum correlation observed
-    """
-    data = validate_data(data)
-    rng = np.random.default_rng(random_state)
 
-    n_samples = len(data)
-    subsample_size = int(n_samples * subsample_ratio)
+def top_k_stability_score(
+    score_matrix,
+    *,
+    top_k: int | None = None,
+    top_fraction: float | None = None,
+    score_polarity: str = "higher_is_anomalous",
+) -> float:
+    """Average pairwise Jaccard overlap of top-k anomaly sets. Higher is better."""
+    matrix = _score_matrix(score_matrix)
+    if (top_k is None) == (top_fraction is None):
+        raise ValueError("pass exactly one of top_k or top_fraction")
+    if top_fraction is not None:
+        if not 0 < top_fraction < 1:
+            raise ValueError("top_fraction must be between 0 and 1")
+        top_k = math.ceil(matrix.shape[1] * top_fraction)
 
-    # Generate scores for each subsample
-    all_scores = []
-    all_indices = []
+    assert top_k is not None
+    if not 1 <= top_k <= matrix.shape[1]:
+        raise ValueError("top_k must be between 1 and the number of samples")
 
-    for _ in range(n_subsamples):
-        indices = rng.choice(n_samples, size=subsample_size, replace=False)
-        indices = np.sort(indices)  # Sort for easier lookup later
-        scores = score_func(data[indices])
+    top_sets = []
+    for row in matrix:
+        oriented = orient_scores(row, score_polarity=score_polarity)
+        top_sets.append(set(np.argsort(oriented, kind="mergesort")[-top_k:]))
 
-        all_scores.append(scores)
-        all_indices.append(indices)
+    overlaps = [
+        len(left & right) / len(left | right)
+        for left, right in combinations(top_sets, 2)
+    ]
+    return float(np.mean(overlaps))
 
-    # Compute pairwise correlations
-    correlations = []
 
-    for i in range(n_subsamples):
-        for j in range(i + 1, n_subsamples):
-            # Find common indices
-            common = np.intersect1d(all_indices[i], all_indices[j])
+def _normalized_rank_matrix(score_matrix, *, score_polarity: str) -> np.ndarray:
+    matrix = _score_matrix(score_matrix)
+    ranks = np.vstack(
+        [average_ranks(orient_scores(row, score_polarity=score_polarity)) for row in matrix]
+    )
+    return ranks / matrix.shape[1]
 
-            if len(common) < 10:  # Skip if too little overlap
-                continue
 
-            # Get positions of common indices in each subsample
-            # Since indices are sorted, we can use searchsorted
-            pos_i = np.searchsorted(all_indices[i], common)
-            pos_j = np.searchsorted(all_indices[j], common)
+def _score_matrix(score_matrix) -> np.ndarray:
+    matrix = np.asarray(score_matrix, dtype=float)
+    if matrix.ndim != 2:
+        raise ValueError("score_matrix must be 2D with shape (n_runs, n_samples)")
+    if min(matrix.shape) < 2:
+        raise ValueError("score_matrix must contain at least two runs and two samples")
+    if not np.isfinite(matrix).all():
+        raise ValueError("score_matrix contains non-finite values")
+    return matrix
 
-            # Verify all common indices were found
-            if np.any(pos_i >= len(all_indices[i])) or np.any(
-                pos_j >= len(all_indices[j])
-            ):
-                continue
 
-            scores_i = all_scores[i][pos_i]
-            scores_j = all_scores[j][pos_j]
+def _check_contamination(contamination: float) -> None:
+    if not 0 < contamination < 0.5:
+        raise ValueError("contamination must be between 0 and 0.5")
 
-            # Compute correlation
-            if method == "kendall":
-                corr, _ = kendalltau(scores_i, scores_j)
-            else:
-                corr, _ = spearmanr(scores_i, scores_j)
 
-            if not np.isnan(corr):
-                correlations.append(corr)
+def _beta_parameters(contamination: float, psi: float) -> tuple[float, float]:
+    cutoff = 1 - 2 * contamination
 
-    if not correlations:
-        # No valid correlations computed
-        return {"mean": 0.0, "std": 0.0, "min": 0.0}
+    def objective(params: np.ndarray) -> float:
+        alpha, beta = params
+        return float(((1.0 - psi) - beta_distribution.cdf(cutoff, alpha, beta)) ** 2)
 
-    correlations = np.array(correlations)
-
-    return {
-        "mean": float(correlations.mean()),
-        "std": float(correlations.std()),
-        "min": float(correlations.min()),
+    constraint = {
+        "type": "eq",
+        "fun": lambda params: contamination * params[0]
+        - (1 - contamination) * params[1]
+        - (2 * contamination - 1),
     }
-
-
-def top_k_stability(
-    score_func: Callable[[np.ndarray], np.ndarray],
-    data: np.ndarray,
-    k_values: List[int] = [10, 50, 100],
-    n_subsamples: int = 20,
-    subsample_ratio: float = 0.8,
-    random_state: Optional[int] = None,
-) -> Dict[int, float]:
-    """
-    Measure stability of top-k anomaly detection.
-
-    Returns
-    -------
-    dict mapping k to average Jaccard similarity of top-k sets.
-    """
-    data = validate_data(data)
-    rng = np.random.default_rng(random_state)
-
-    n_samples = len(data)
-    subsample_size = int(n_samples * subsample_ratio)
-
-    # Collect top-k for each subsample
-    top_k_sets = {k: [] for k in k_values}
-
-    for _ in range(n_subsamples):
-        indices = rng.choice(n_samples, size=subsample_size, replace=False)
-        scores = score_func(data[indices])
-
-        # Get top-k indices (highest scores)
-        sorted_idx = np.argsort(scores)[::-1]
-        top_indices = indices[sorted_idx]
-
-        for k in k_values:
-            if k <= len(top_indices):
-                top_k_sets[k].append(set(top_indices[:k]))
-
-    # Compute Jaccard similarities
-    results = {}
-
-    for k in k_values:
-        if not top_k_sets[k]:
-            continue
-
-        similarities = []
-        sets = top_k_sets[k]
-
-        for i in range(len(sets)):
-            for j in range(i + 1, len(sets)):
-                intersection = len(sets[i] & sets[j])
-                union = len(sets[i] | sets[j])
-                similarities.append(intersection / union if union > 0 else 0)
-
-        results[k] = float(np.mean(similarities)) if similarities else 0.0
-
-    return results
+    result = minimize(
+        objective,
+        x0=np.array([1.0, 1.0]),
+        bounds=[(1.0, None), (1.0, None)],
+        constraints=[constraint],
+        method="SLSQP",
+    )
+    if not result.success:
+        raise RuntimeError("failed to fit beta weighting parameters")
+    return float(result.x[0]), float(result.x[1])

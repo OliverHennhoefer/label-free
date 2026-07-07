@@ -1,66 +1,67 @@
-import numpy as np
-from labelfree.metrics.stability import ranking_stability, top_k_stability
-from .shuttle_data import load_shuttle_data
+import pytest
+
+from labelfree.metrics import ranking_stability_score, top_k_stability_score
 
 
-class TestStability:
-    """Test suite for stability metrics."""
+def test_ranking_stability_is_one_for_identical_rankings():
+    score_matrix = [
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+    ]
 
-    def test_ranking_stability(self):
-        """Test ranking stability measurement."""
-        X, y = load_shuttle_data(n_samples=500, random_state=42)
+    result = ranking_stability_score(score_matrix, contamination=0.2)
 
-        # Simple scoring function
-        def score_func(data):
-            center = data.mean(axis=0)
-            return np.linalg.norm(data - center, axis=1)
+    assert result == pytest.approx(1.0)
 
-        result = ranking_stability(
-            score_func, X, n_subsamples=10, subsample_ratio=0.8, random_state=42
-        )
 
-        # Check output
-        assert set(result.keys()) == {"mean", "std", "min"}
-        assert 0 <= result["mean"] <= 1
-        assert result["std"] >= 0
-        assert result["min"] <= result["mean"]
+def test_ranking_stability_drops_for_variable_rankings():
+    stable = [
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+    ]
+    variable = [
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [4.0, 3.0, 2.0, 1.0, 0.0],
+        [0.0, 2.0, 4.0, 1.0, 3.0],
+    ]
 
-        # Stable scoring should have high correlation
-        assert result["mean"] > 0.7
+    assert ranking_stability_score(variable, contamination=0.2) < ranking_stability_score(
+        stable,
+        contamination=0.2,
+    )
 
-    def test_top_k_stability(self):
-        """Test top-k stability measurement."""
-        X, y = load_shuttle_data(n_samples=500, random_state=42)
 
-        def score_func(data):
-            center = data.mean(axis=0)
-            return np.linalg.norm(data - center, axis=1)
+def test_top_k_stability_is_average_jaccard_overlap():
+    score_matrix = [
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.1, 1.1, 2.1, 3.1, 4.1],
+        [0.0, 1.0, 3.0, 2.0, 4.0],
+    ]
 
-        result = top_k_stability(
-            score_func, X, k_values=[10, 20, 50], n_subsamples=10, random_state=42
-        )
+    result = top_k_stability_score(score_matrix, top_k=2)
 
-        # Check output
-        assert set(result.keys()) == {10, 20, 50}
+    assert result == pytest.approx((1.0 + 1 / 3 + 1 / 3) / 3)
 
-        # Jaccard similarity should be in [0, 1]
-        for k, similarity in result.items():
-            assert 0 <= similarity <= 1
 
-        # Smaller k should be more stable
-        assert result[10] >= result[50]
+def test_stability_metrics_apply_score_polarity():
+    high_is_anomalous = [
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.1, 1.1, 2.1, 3.1, 4.1],
+    ]
+    high_is_normal = [[-value for value in row] for row in high_is_anomalous]
 
-    def test_unstable_scoring(self):
-        """Test with unstable scoring function."""
-        rng = np.random.default_rng(42)
-        X = rng.standard_normal((200, 5))
+    result = top_k_stability_score(
+        high_is_normal,
+        top_k=2,
+        score_polarity="higher_is_normal",
+    )
+    expected = top_k_stability_score(high_is_anomalous, top_k=2)
 
-        # Random scoring function (unstable)
-        def score_func(data):
-            return rng.standard_normal(len(data))
+    assert result == pytest.approx(expected)
 
-        result = ranking_stability(score_func, X, n_subsamples=10)
 
-        # Should have very low stability
-        assert result["mean"] < 0.1
-        assert result["min"] < 0.1
+def test_ranking_stability_validates_contamination():
+    with pytest.raises(ValueError, match="contamination"):
+        ranking_stability_score([[0.0, 1.0], [1.0, 0.0]], contamination=0.5)
