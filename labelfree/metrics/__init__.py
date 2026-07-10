@@ -11,7 +11,7 @@ from labelfree.metrics.consensus import (
     hits_model_scores,
     model_centrality_scores,
 )
-from labelfree.metrics.ireos import ireos_score
+from labelfree.metrics.ireos import ireos_score, ireos_scores
 from labelfree.metrics.laplacian import laplacian_score
 from labelfree.metrics.mass_volume import (
     bounding_box_volume,
@@ -34,6 +34,7 @@ __all__ = [
     "expected_anomaly_gap_score",
     "hits_model_scores",
     "ireos_score",
+    "ireos_scores",
     "laplacian_score",
     "mass_volume_auc",
     "mass_volume_curve",
