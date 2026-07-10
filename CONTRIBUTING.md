@@ -4,8 +4,8 @@ Open an issue before large changes. For a focused fix:
 
 ```bash
 python -m pip install -e ".[dev]"
-ruff check .
-ruff format --check .
+pre-commit install
+pre-commit run --all-files
 pytest
 ```
 

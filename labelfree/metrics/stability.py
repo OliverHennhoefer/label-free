@@ -108,9 +108,11 @@ def _beta_parameters(contamination: float, psi: float) -> tuple[float, float]:
 
     constraint = {
         "type": "eq",
-        "fun": lambda params: contamination * params[0]
-        - (1 - contamination) * params[1]
-        - (2 * contamination - 1),
+        "fun": lambda params: (
+            contamination * params[0]
+            - (1 - contamination) * params[1]
+            - (2 * contamination - 1)
+        ),
     }
     result = minimize(
         objective,
