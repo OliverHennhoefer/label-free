@@ -1,4 +1,4 @@
-"""Similarity-based IREOS."""
+"""Similarity-based Unsupervised Evaluation of Outlier Detection (SIREOS)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def sireos_score(
     kernel_width: float | None = None,
     kernel_quantile: float = 0.01,
 ) -> float:
-    """Score-weighted average similarity to other samples. Lower is better."""
+    """Score-weighted mean heat-kernel similarity to other rows of X. Lower is better."""
     X = as_2d_finite(X, name="X")
     scores = orient_scores(scores, score_polarity=score_polarity)
     if X.shape[0] != scores.size:

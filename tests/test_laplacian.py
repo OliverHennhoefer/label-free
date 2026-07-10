@@ -3,6 +3,7 @@ import math
 import pytest
 
 from labelfree.metrics import laplacian_score
+from labelfree.metrics.laplacian import _neighbor_edges
 
 
 def test_laplacian_score_rewards_graph_smooth_scores():
@@ -42,3 +43,7 @@ def test_laplacian_score_is_sign_invariant_after_polarity():
 def test_laplacian_score_validates_neighbor_count():
     with pytest.raises(ValueError, match="n_neighbors"):
         laplacian_score([[0.0], [1.0]], [0.0, 1.0], n_neighbors=2)
+
+
+def test_neighbor_graph_uses_exact_requested_count():
+    assert _neighbor_edges([[0.0], [10.0], [11.0]], 1) == {(0, 1), (1, 2)}

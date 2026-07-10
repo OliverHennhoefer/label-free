@@ -17,7 +17,7 @@ def laplacian_score(
     n_neighbors: int = 5,
     score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Score smoothness on a nearest-neighbor graph. Lower is better."""
+    """Score smoothness on a nearest-neighbor graph over rows of X. Lower is better."""
     X = as_2d_finite(X, name="X")
     scores = orient_scores(scores, score_polarity=score_polarity)
     if X.shape[0] != scores.size:
@@ -45,7 +45,7 @@ def laplacian_score(
 
 def _neighbor_edges(X: np.ndarray, n_neighbors: int) -> set[tuple[int, int]]:
     neighbors = NearestNeighbors(n_neighbors=n_neighbors + 1).fit(X)
-    indices = neighbors.kneighbors(return_distance=False)
+    indices = neighbors.kneighbors(X, return_distance=False)
     edges = set()
     for i, row in enumerate(indices):
         for j in row:

@@ -8,7 +8,7 @@ import numpy as np
 
 from labelfree.utils.validation import orient_scores
 
-EPSILON = 1e-9
+EPSILON = 1e-6
 
 
 def relative_top_median_score(
@@ -18,7 +18,7 @@ def relative_top_median_score(
     score_polarity: str = "higher_is_anomalous",
     eps: float = EPSILON,
 ) -> float:
-    """Relative Top-Median (RTM). Higher is better."""
+    """Relative Top-Median score-tail separation. Higher is better."""
     scores = orient_scores(scores, score_polarity=score_polarity)
     top = _top_scores(scores, top_fraction)
     median = float(np.median(scores))
@@ -32,7 +32,7 @@ def expected_anomaly_gap_score(
     score_polarity: str = "higher_is_anomalous",
     eps: float = EPSILON,
 ) -> float:
-    """Expected Anomaly Gap (EAG). Higher is better."""
+    """Expected Anomaly Gap over top-tail thresholds. Higher is better."""
     scores = np.sort(orient_scores(scores, score_polarity=score_polarity))[::-1]
     _check_fraction(top_fraction)
     n_samples = scores.size
@@ -68,7 +68,7 @@ def normalized_pseudo_discrepancy_score(
     score_polarity: str = "higher_is_anomalous",
     eps: float = EPSILON,
 ) -> float:
-    """Normalized Pseudo Discrepancy (NPD). Higher is better."""
+    """Discrepancy between validation and generated score vectors. Higher is better."""
     validation_scores = orient_scores(
         validation_scores,
         score_polarity=score_polarity,
@@ -85,7 +85,8 @@ def normalized_pseudo_discrepancy_score(
 def _top_scores(scores: np.ndarray, top_fraction: float) -> np.ndarray:
     _check_fraction(top_fraction)
     count = max(1, math.ceil(scores.size * top_fraction))
-    return np.sort(scores)[-count:]
+    threshold = np.partition(scores, -count)[-count]
+    return scores[scores >= threshold]
 
 
 def _check_fraction(value: float) -> None:

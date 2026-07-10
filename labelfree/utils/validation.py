@@ -3,6 +3,7 @@
 import math
 
 import numpy as np
+from scipy.stats import rankdata
 
 
 def as_1d_finite(values, *, name: str) -> np.ndarray:
@@ -73,15 +74,4 @@ def split_score_labels(
 
 def average_ranks(values: np.ndarray) -> np.ndarray:
     """Return 1-based average ranks, with larger values receiving larger ranks."""
-    values = as_1d_finite(values, name="values")
-    order = np.argsort(values, kind="mergesort")
-    sorted_values = values[order]
-    ranks = np.empty(values.size, dtype=float)
-    start = 0
-    while start < values.size:
-        end = start + 1
-        while end < values.size and sorted_values[end] == sorted_values[start]:
-            end += 1
-        ranks[order[start:end]] = (start + 1 + end) / 2
-        start = end
-    return ranks
+    return rankdata(as_1d_finite(values, name="values"), method="average")

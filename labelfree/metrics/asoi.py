@@ -55,8 +55,10 @@ def asoi_score(
 ) -> float:
     """Anomaly Separation and Overlap Index.
 
-    Combines normalized anomaly-to-normal-centroid separation with average
-    feature-wise Hellinger distance. Higher is better.
+    Combines mean anomaly-to-normal-centroid separation with average
+    feature-wise Hellinger distance as defined by Mahmud et al. Higher is
+    better. The separation term is scale-dependent, so scale ``X`` before
+    comparing results across datasets.
     """
     _check_weights(alpha, beta)
     normal, anomaly = _split_X(
@@ -68,9 +70,6 @@ def asoi_score(
     )
     normal_center = normal.mean(axis=0)
     separation = float(np.linalg.norm(anomaly - normal_center, axis=1).mean())
-    max_distance = float(np.linalg.norm(anomaly.max(axis=0) - normal.min(axis=0)))
-    separation_norm = 0.0 if max_distance == 0 else separation / max_distance
-    separation_norm = float(np.clip(separation_norm, 0.0, 1.0))
 
     hellinger = float(
         np.mean(
@@ -80,7 +79,7 @@ def asoi_score(
             ]
         )
     )
-    return alpha * separation_norm + beta * hellinger
+    return alpha * separation + beta * hellinger
 
 
 def _split_X(
@@ -114,7 +113,9 @@ def _hellinger_feature(anomaly: np.ndarray, normal: np.ndarray) -> float:
     normal_counts, _ = np.histogram(normal, bins=edges)
     anomaly_mass = anomaly_counts / anomaly.size
     normal_mass = normal_counts / normal.size
-    return float(np.linalg.norm(np.sqrt(anomaly_mass) - np.sqrt(normal_mass)) / math.sqrt(2))
+    return float(
+        np.linalg.norm(np.sqrt(anomaly_mass) - np.sqrt(normal_mass)) / math.sqrt(2)
+    )
 
 
 def _check_weights(alpha: float, beta: float) -> None:

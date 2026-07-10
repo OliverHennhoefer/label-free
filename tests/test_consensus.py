@@ -70,3 +70,11 @@ def test_consensus_metrics_apply_score_polarity():
 def test_consensus_metrics_validate_matrix_shape():
     with pytest.raises(ValueError, match="2D"):
         model_centrality_scores([1.0, 2.0, 3.0])
+
+
+def test_hits_validates_iteration_controls():
+    with pytest.raises(ValueError, match="max_iter"):
+        hits_model_scores([[0.0, 1.0], [1.0, 0.0]], max_iter=0)
+
+    with pytest.raises(ValueError, match="tol"):
+        hits_model_scores([[0.0, 1.0], [1.0, 0.0]], tol=-1.0)

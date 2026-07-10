@@ -33,6 +33,8 @@ def score_cluster_metrics(
         contamination=contamination,
         score_polarity=score_polarity,
     )
+    if oriented.size < 3:
+        raise ValueError("score-cluster metrics require at least three samples")
     values = oriented.reshape(-1, 1)
 
     return {
@@ -41,6 +43,7 @@ def score_cluster_metrics(
         "davies_bouldin": float(davies_bouldin_score(values, labels)),
         "xie_beni": _xie_beni_score(values, labels),
     }
+
 
 def _xie_beni_score(values: np.ndarray, labels: np.ndarray) -> float:
     centers = np.array([values[labels == label].mean(axis=0) for label in (0, 1)])

@@ -55,6 +55,23 @@ def test_excess_mass_curve_matches_empirical_supremum():
     assert curve.tolist() == pytest.approx([1.0, 0.0])
 
 
+def test_excess_mass_curve_does_not_assume_first_level_is_zero():
+    _, curve = excess_mass_curve(
+        [5.0, 4.0],
+        [5.0, 4.0],
+        support_volume=2.0,
+        levels=[0.25],
+        score_polarity="higher_is_normal",
+    )
+
+    assert curve.tolist() == pytest.approx([0.5])
+
+
+def test_excess_mass_levels_must_be_ordered_and_non_negative():
+    with pytest.raises(ValueError, match="non-negative and strictly increasing"):
+        excess_mass_curve([1.0, 0.0], [1.0, 0.0], support_volume=1.0, levels=[0.5, 0.0])
+
+
 def test_excess_mass_auc_integrates_truncated_curve():
     result = excess_mass_auc(
         [5.0, 4.0, 3.0, 1.0, 0.0],

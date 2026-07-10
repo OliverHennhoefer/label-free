@@ -21,9 +21,8 @@ def test_asoi_matches_algorithm_components():
 
     result = asoi_score(X, scores, n_outliers=2)
 
-    separation_norm = 9.0 / 12.0
     hellinger = 1.0
-    expected = 0.5314 * separation_norm + 0.4686 * hellinger
+    expected = 0.5314 * 9.0 + 0.4686 * hellinger
     assert result == pytest.approx(expected)
 
 

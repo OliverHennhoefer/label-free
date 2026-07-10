@@ -27,7 +27,9 @@ def test_ranking_stability_drops_for_variable_rankings():
         [0.0, 2.0, 4.0, 1.0, 3.0],
     ]
 
-    assert ranking_stability_score(variable, contamination=0.2) < ranking_stability_score(
+    assert ranking_stability_score(
+        variable, contamination=0.2
+    ) < ranking_stability_score(
         stable,
         contamination=0.2,
     )

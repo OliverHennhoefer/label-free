@@ -60,3 +60,8 @@ def test_contamination_uses_top_ceiled_fraction():
     expected = score_cluster_metrics([0.0, 0.2, 0.3, 4.0, 4.2], n_outliers=2)
 
     assert result == pytest.approx(expected)
+
+
+def test_score_cluster_requires_enough_samples_for_internal_indices():
+    with pytest.raises(ValueError, match="at least three"):
+        score_cluster_metrics([0.0, 1.0], n_outliers=1)

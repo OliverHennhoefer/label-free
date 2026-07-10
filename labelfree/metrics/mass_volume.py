@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.integrate import trapezoid
 
 from labelfree.utils.validation import as_1d_finite, as_2d_finite, orient_scores
 
@@ -16,7 +17,7 @@ def excess_mass_curve(
     level_count: int = 1000,
     score_polarity: str = "higher_is_anomalous",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Empirical Excess-Mass curve. Higher is better."""
+    """Empirical Excess-Mass curve from data and uniform-reference scores."""
     normal_scores, reference_normal_scores = _normality_scores(
         scores,
         reference_scores,
@@ -25,8 +26,7 @@ def excess_mass_curve(
     support_volume = _check_volume(support_volume)
     levels = _levels(levels, level_count=level_count, support_volume=support_volume)
 
-    curve = np.zeros(levels.size, dtype=float)
-    curve[0] = 1.0
+    curve = np.maximum(0.0, 1.0 - levels * support_volume)
     for threshold in np.unique(normal_scores):
         mass = np.mean(normal_scores > threshold)
         volume = np.mean(reference_normal_scores > threshold) * support_volume
@@ -59,7 +59,7 @@ def excess_mass_auc(
             stop = below[0] + 1
             levels = levels[:stop]
             curve = curve[:stop]
-    return float(np.trapezoid(curve, levels))
+    return float(trapezoid(curve, levels))
 
 
 def mass_volume_curve(
@@ -72,7 +72,7 @@ def mass_volume_curve(
     alpha_count: int = 1000,
     score_polarity: str = "higher_is_anomalous",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Empirical Mass-Volume curve. Lower is better."""
+    """Empirical Mass-Volume curve from data and uniform-reference scores."""
     normal_scores, reference_normal_scores = _normality_scores(
         scores,
         reference_scores,
@@ -114,7 +114,7 @@ def mass_volume_auc(
         alpha_count=alpha_count,
         score_polarity=score_polarity,
     )
-    return float(np.trapezoid(volumes, alphas))
+    return float(trapezoid(volumes, alphas))
 
 
 def bounding_box_volume(X, *, offset: float = 1e-12) -> float:
@@ -141,4 +141,7 @@ def _levels(levels, *, level_count: int, support_volume: float) -> np.ndarray:
         if level_count < 2:
             raise ValueError("level_count must be at least 2")
         return np.linspace(0.0, 100.0 / support_volume, level_count)
-    return as_1d_finite(levels, name="levels")
+    levels = as_1d_finite(levels, name="levels")
+    if np.any(levels < 0) or np.any(np.diff(levels) <= 0):
+        raise ValueError("levels must be non-negative and strictly increasing")
+    return levels

@@ -13,7 +13,13 @@ def test_relative_top_median_uses_top_score_tail():
 
     result = relative_top_median_score(scores, top_fraction=0.4)
 
-    assert result == pytest.approx((15.0 - 3.0) / (3.0 + 1e-9))
+    assert result == pytest.approx((15.0 - 3.0) / (3.0 + 1e-6))
+
+
+def test_relative_top_median_includes_threshold_ties():
+    result = relative_top_median_score([1.0, 2.0, 4.0, 4.0], top_fraction=0.25)
+
+    assert result == pytest.approx((4.0 - 3.0) / (3.0 + 1e-6))
 
 
 def test_expected_anomaly_gap_matches_discrete_formula():
@@ -27,9 +33,7 @@ def test_expected_anomaly_gap_matches_discrete_formula():
         high = ordered[:k]
         low = ordered[k:]
         numerator = k * len(low) * (high.mean() - low.mean()) ** 2
-        denominator = len(ordered) * (
-            k * high.var() + len(low) * low.var() + 1e-9
-        )
+        denominator = len(ordered) * (k * high.var() + len(low) * low.var() + 1e-6)
         terms.append(numerator / denominator)
 
     assert result == pytest.approx(np.mean(terms))
@@ -41,7 +45,9 @@ def test_normalized_pseudo_discrepancy_matches_formula():
 
     result = normalized_pseudo_discrepancy_score(validation, generated)
 
-    assert result == pytest.approx(9.0 / (2 * (np.var(validation) + np.var(generated)) + 1e-9))
+    assert result == pytest.approx(
+        9.0 / (2 * (np.var(validation) + np.var(generated)) + 1e-6)
+    )
 
 
 def test_autouad_metrics_apply_score_polarity():

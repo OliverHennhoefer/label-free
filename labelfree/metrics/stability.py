@@ -16,10 +16,10 @@ def ranking_stability_score(
     score_matrix,
     *,
     contamination: float,
-    psi: float = 0.85,
+    psi: float = 0.8,
     score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Perini-Galvin-Vercruyssen ranking stability. Higher is better."""
+    """Stability across repeated score rows for the same samples. Higher is better."""
     ranks = _normalized_rank_matrix(score_matrix, score_polarity=score_polarity)
     _check_contamination(contamination)
     if not 0 < psi < 1:
@@ -47,7 +47,7 @@ def top_k_stability_score(
     top_fraction: float | None = None,
     score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Average pairwise Jaccard overlap of top-k anomaly sets. Higher is better."""
+    """Pairwise top-k overlap across repeated score rows. Higher is better."""
     matrix = _score_matrix(score_matrix)
     if (top_k is None) == (top_fraction is None):
         raise ValueError("pass exactly one of top_k or top_fraction")
@@ -75,7 +75,10 @@ def top_k_stability_score(
 def _normalized_rank_matrix(score_matrix, *, score_polarity: str) -> np.ndarray:
     matrix = _score_matrix(score_matrix)
     ranks = np.vstack(
-        [average_ranks(orient_scores(row, score_polarity=score_polarity)) for row in matrix]
+        [
+            average_ranks(orient_scores(row, score_polarity=score_polarity))
+            for row in matrix
+        ]
     )
     return ranks / matrix.shape[1]
 

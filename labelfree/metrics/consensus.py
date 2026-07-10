@@ -12,7 +12,7 @@ def model_centrality_scores(
     *,
     score_polarity: str = "higher_is_anomalous",
 ) -> np.ndarray:
-    """Average pairwise Spearman rank agreement per model. Higher is better."""
+    """Average pairwise rank agreement for model-by-sample scores. Higher is better."""
     ranks = _rank_matrix(score_matrix, score_polarity=score_polarity)
     n_models = ranks.shape[0]
     similarity = np.eye(n_models)
@@ -29,7 +29,7 @@ def average_rank_consensus_scores(
     *,
     score_polarity: str = "higher_is_anomalous",
 ) -> np.ndarray:
-    """Rank agreement with the average-rank consensus. Higher is better."""
+    """Agreement with the average rank across model-by-sample scores. Higher is better."""
     ranks = _rank_matrix(score_matrix, score_polarity=score_polarity)
     consensus = ranks.mean(axis=0)
     return np.array([_pearson(row, consensus) for row in ranks], dtype=float)
@@ -42,7 +42,11 @@ def hits_model_scores(
     max_iter: int = 100,
     tol: float = 1e-10,
 ) -> np.ndarray:
-    """HITS hubness scores for candidate models. Higher is better."""
+    """HITS hubness for a model-by-sample score matrix. Higher is better."""
+    if max_iter < 1:
+        raise ValueError("max_iter must be positive")
+    if tol < 0:
+        raise ValueError("tol must be non-negative")
     ranks = _rank_matrix(score_matrix, score_polarity=score_polarity)
     weights = ranks / ranks.shape[1]
     hub = np.full(ranks.shape[0], 1 / np.sqrt(ranks.shape[0]))
@@ -62,11 +66,16 @@ def _rank_matrix(score_matrix, *, score_polarity: str) -> np.ndarray:
     if matrix.ndim != 2:
         raise ValueError("score_matrix must be 2D with shape (n_models, n_samples)")
     if min(matrix.shape) < 2:
-        raise ValueError("score_matrix must contain at least two models and two samples")
+        raise ValueError(
+            "score_matrix must contain at least two models and two samples"
+        )
     if not np.isfinite(matrix).all():
         raise ValueError("score_matrix contains non-finite values")
     return np.vstack(
-        [average_ranks(orient_scores(row, score_polarity=score_polarity)) for row in matrix]
+        [
+            average_ranks(orient_scores(row, score_polarity=score_polarity))
+            for row in matrix
+        ]
     )
 
 
