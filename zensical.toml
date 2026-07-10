@@ -1,0 +1,28 @@
+[project]
+site_name = "labelfree"
+site_url = "https://oliverhennhoefer.github.io/label-free/"
+site_description = "Label-free metrics for unsupervised anomaly detector evaluation"
+site_author = "Oliver Hennhoefer"
+repo_url = "https://github.com/OliverHennhoefer/label-free"
+repo_name = "OliverHennhoefer/label-free"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+site_dir = "site"
+copyright = "Copyright &copy; 2025-2026 Oliver Hennhoefer"
+nav = [
+    {"Home" = "index.md"},
+    {"Choose a metric" = "metrics.md"},
+    {"API reference" = "api.md"},
+    {"Examples" = "examples.md"},
+]
+
+[project.theme]
+features = [
+    "content.code.copy",
+    "navigation.footer",
+    "navigation.top",
+    "toc.follow",
+]
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
