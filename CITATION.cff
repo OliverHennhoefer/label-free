@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use labelfree, please cite this software."
+title: "labelfree"
+type: software
+authors:
+  - family-names: "Hennhoefer"
+    given-names: "Oliver"
+version: 1.0.0
+date-released: 2026-07-10
+repository-code: "https://github.com/OliverHennhoefer/label-free"
+url: "https://oliverhennhoefer.github.io/label-free/"
+license: MIT
