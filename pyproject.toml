@@ -45,6 +45,7 @@ dependencies = [
 dev = ["pre-commit>=4.2", "pytest>=8", "ruff>=0.12"]
 docs = ["zensical==0.0.47"]
 examples = [
+    "matplotlib>=3.8",
     "numba>=0.66",
     "oddball>=1.4",
     "optuna>=4",

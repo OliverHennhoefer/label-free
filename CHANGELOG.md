@@ -31,4 +31,6 @@
   `labelfree.utils` is private.
 - Reference tests against the authors' implementations (UOMS, IREOS,
   SIREOS, EMMV, ranking stability), ELKI formulas, and the `s_dbw` package.
-- Zensical documentation, examples, CI, and trusted PyPI publishing.
+- Zensical documentation, two example notebooks stored with their outputs
+  (metric comparison and label-free model selection), CI, and trusted PyPI
+  publishing.

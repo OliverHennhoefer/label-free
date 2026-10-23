@@ -91,18 +91,19 @@ best_model = models[int(np.argmax(points))]
 
 ## Notebooks
 
-- [Metric tuning](https://github.com/OliverHennhoefer/label-free/blob/main/examples/metric_tuning.ipynb)
-  uses Optuna to swap label-free objectives across a shared detector pool and
-  checks the selected configurations on a labeled holdout.
-- [Metric signal analysis](https://github.com/OliverHennhoefer/label-free/blob/main/examples/metric_signal_analysis.ipynb)
-  compares label-free rankings with held-out detector quality across datasets
-  and random splits.
+The notebooks are stored with their outputs, so they can be read directly on
+GitHub.
+
+- [Comparing metrics on real data](https://github.com/OliverHennhoefer/label-free/blob/main/examples/metric_comparison.ipynb)
+  computes every metric family for a pool of detectors on a real dataset and
+  checks each metric's ranking against labels the metrics never saw.
+- [Model selection and tuning](https://github.com/OliverHennhoefer/label-free/blob/main/examples/model_selection.ipynb)
+  tunes detectors with Optuna and a label-free objective, selects one with
+  robust Borda counting, and measures the pick on labeled test data across
+  several datasets.
 
 Install notebook dependencies with:
 
 ```bash
 python -m pip install "labelfree[examples]"
 ```
-
-The notebooks contain no cached outputs, so displayed results always correspond
-to the installed package and dependencies.
