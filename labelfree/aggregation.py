@@ -9,7 +9,6 @@ the candidate models.
 from __future__ import annotations
 
 import numpy as np
-from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.stats import rankdata
 
 from labelfree._validation import check_integer
@@ -90,9 +89,13 @@ def robust_borda_scores(
     )
     if np.ptp(influence) == 0:
         return _borda(positions, top_k)
-    groups = fcluster(linkage(influence[:, None], method="single"), 2, "maxclust")
-    means = {g: influence[groups == g].mean() for g in np.unique(groups)}
-    keep = groups != max(means, key=means.get)
+    # Single linkage into two groups splits one-dimensional values at their
+    # largest gap; the upper group has the larger mean influence. Tied gaps
+    # resolve to the highest one, so the fewest metrics are dropped.
+    ordered = np.sort(influence)
+    gaps = np.diff(ordered)
+    split = len(gaps) - 1 - int(np.argmax(gaps[::-1]))
+    keep = influence <= ordered[split]
     return _borda(positions[keep], top_k)
 
 

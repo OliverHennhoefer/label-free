@@ -44,6 +44,27 @@ def test_robust_borda_discards_an_influential_adversarial_metric():
     assert np.argmax(trimmed) == 7
 
 
+def test_robust_borda_splits_at_the_highest_of_tied_gaps():
+    # Influences are [0.5, 2.75, 1.25, 1.5, 2.25]: the two largest gaps tie,
+    # and the split above 1.5 drops the two most influential rankings.
+    positions = np.array(
+        [
+            [4, 3, 5, 2, 6, 1, 8, 7],
+            [2, 7, 5, 4, 1, 3, 8, 6],
+            [4, 1, 2, 3, 7, 6, 8, 5],
+            [1, 6, 2, 5, 3, 4, 8, 7],
+            [7, 4, 3, 2, 8, 1, 6, 5],
+        ],
+        dtype=float,
+    )
+
+    trimmed = robust_borda_scores(positions, higher_is_better=False)
+
+    assert trimmed == pytest.approx(
+        borda_scores(positions[[0, 2, 3]], higher_is_better=False)
+    )
+
+
 def test_robust_borda_keeps_small_or_uniform_sets():
     metrics = np.array([[0.1, 0.2, 0.3], [0.3, 0.2, 0.1]])
 
