@@ -222,7 +222,7 @@ def test_ireos_significance_exact_moments_match_permutation_enumeration(monkeypa
     result = ireos_significance(X, weights, gamma_max=1.0)
 
     null = [ireos_score(X, list(perm), gamma_max=1.0) for perm in permutations(weights)]
-    assert result.method == "exact"
+    assert result.method == "exact_moments"
     assert result.index == pytest.approx(ireos_score(X, weights, gamma_max=1.0))
     assert result.expected == pytest.approx(np.mean(null))
     assert result.std == pytest.approx(np.std(null))
@@ -233,6 +233,16 @@ def test_ireos_significance_exact_moments_match_permutation_enumeration(monkeypa
         (result.index - result.expected) / result.std
     )
     assert 0 < result.p_value < 1
+
+
+def test_ireos_significance_p_value_respects_discrete_null(monkeypatch):
+    # One of four samples is the outlier: a random solution matches the best
+    # one with probability 1/4, which a normal approximation understates.
+    _fake_curves(monkeypatch)
+
+    result = ireos_significance(X, [0, 0, 0, 1], gamma_max=1.0, random_state=0)
+
+    assert result.p_value == pytest.approx(0.25, abs=0.02)
 
 
 def test_ireos_significance_monte_carlo_for_clumps(monkeypatch):
@@ -267,4 +277,6 @@ def test_ireos_significance_flags_an_isolated_outlier():
 
     assert result.index > result.expected
     assert result.adjusted > 0
-    assert result.p_value < 0.05
+    assert result.z_score > 2
+    # Only the one random solution that picks the outlier ties it.
+    assert result.p_value == pytest.approx(1 / 9, abs=0.02)

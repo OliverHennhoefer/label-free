@@ -69,6 +69,8 @@ def test_unify_scores_validates_inputs():
         unify_scores(SCORES, inversion="square")
     with pytest.raises(ValueError, match="positive scores"):
         unify_scores([-1.0, 1.0], score_polarity="higher_is_normal", inversion="log")
+    with pytest.raises(ValueError, match="baseline"):
+        unify_scores(SCORES, baseline=np.nan)
     with pytest.raises(ValueError, match="gamma scaling"):
         unify_scores([-1.0, 0.0, 2.0], method="gamma")
 
