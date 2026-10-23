@@ -1,11 +1,23 @@
-"""Excess-Mass and Mass-Volume criteria."""
+"""Excess-Mass and Mass-Volume criteria (Goix, 2016).
+
+Goix ("How to Evaluate the Quality of Unsupervised Anomaly Detection
+Algorithms?", ICML Anomaly Detection Workshop 2016) scores a detector by the
+level sets of its normality score ``s`` (higher means more normal):
+
+- ``MV(alpha) = inf_u Leb(s >= u)`` subject to ``P_n(s(X) >= u) >= alpha``,
+- ``EM(t) = sup_u P_n(s(X) >= u) - t * Leb(s >= u)``.
+
+Lebesgue measures are estimated by Monte Carlo from detector scores on
+samples drawn uniformly from a support of known volume. Unlike the paper,
+these functions take oriented anomaly scores and negate them internally.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 from scipy.integrate import trapezoid
 
-from labelfree.utils.validation import as_1d_finite, as_2d_finite, orient_scores
+from labelfree._validation import as_1d_finite, as_2d_finite, orient_scores
 
 
 def excess_mass_curve(
@@ -17,7 +29,36 @@ def excess_mass_curve(
     level_count: int = 1000,
     score_polarity: str = "higher_is_anomalous",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Empirical Excess-Mass curve from data and uniform-reference scores."""
+    """Empirical Excess-Mass curve, as in Goix's reference code.
+
+    For every level ``t``, the supremum runs over the thresholds ``u`` at the
+    observed data scores (with strict ``s > u`` as in the authors' code) and
+    over the whole support, which contributes ``1 - t * support_volume``.
+
+    Parameters
+    ----------
+    scores : array-like of shape (n_samples,)
+        Detector scores on the data.
+    reference_scores : array-like of shape (n_reference,)
+        Detector scores on samples drawn uniformly from the support, for
+        example the bounding box of the data (:func:`bounding_box_volume`).
+        Goix uses 100,000 reference samples.
+    support_volume : float
+        Lebesgue volume of the sampled support.
+    levels : array-like, optional
+        Non-negative, strictly increasing levels ``t``. Defaults to
+        ``level_count`` points on ``[0, 100 / support_volume]``, the paper's
+        range.
+    level_count : int
+        Number of default levels.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+
+    Returns
+    -------
+    levels, curve : numpy.ndarray
+        Levels and Excess-Mass values.
+    """
     normal_scores, reference_normal_scores = _normality_scores(
         scores,
         reference_scores,
@@ -44,7 +85,14 @@ def excess_mass_auc(
     em_min: float | None = 0.9,
     score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Area under the empirical Excess-Mass curve. Higher is better."""
+    """Area under the Excess-Mass curve. Higher is better.
+
+    Following Goix, the integral stops at the first level where the curve
+    drops to ``em_min`` or below (the paper's ``t_max = 0.9``). If the curve
+    never reaches ``em_min``, the whole level range is integrated.
+    Parameters other than ``em_min`` match :func:`excess_mass_curve`;
+    ``em_min=None`` integrates the full range.
+    """
     levels, curve = excess_mass_curve(
         scores,
         reference_scores,
@@ -72,7 +120,34 @@ def mass_volume_curve(
     alpha_count: int = 1000,
     score_polarity: str = "higher_is_anomalous",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Empirical Mass-Volume curve from data and uniform-reference scores."""
+    """Empirical Mass-Volume curve, as in Goix's reference code.
+
+    For every mass ``alpha``, the threshold is the smallest data score whose
+    upper level set holds at least ``alpha`` of the data, and the volume is
+    the reference fraction at or above it times ``support_volume``.
+
+    Parameters
+    ----------
+    scores : array-like of shape (n_samples,)
+        Detector scores on the data.
+    reference_scores : array-like of shape (n_reference,)
+        Detector scores on samples drawn uniformly from the support, for
+        example the bounding box of the data (:func:`bounding_box_volume`).
+        Goix uses 100,000 reference samples.
+    support_volume : float
+        Lebesgue volume of the sampled support.
+    alpha_min, alpha_max : float
+        Mass range; the paper uses ``[0.9, 0.999]``.
+    alpha_count : int
+        Number of masses.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+
+    Returns
+    -------
+    alphas, volumes : numpy.ndarray
+        Masses and Mass-Volume values.
+    """
     normal_scores, reference_normal_scores = _normality_scores(
         scores,
         reference_scores,
@@ -104,7 +179,10 @@ def mass_volume_auc(
     alpha_count: int = 1000,
     score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Area under the empirical Mass-Volume curve. Lower is better."""
+    """Area under the Mass-Volume curve. Lower is better.
+
+    Parameters match :func:`mass_volume_curve`.
+    """
     alphas, volumes = mass_volume_curve(
         scores,
         reference_scores,
@@ -118,7 +196,11 @@ def mass_volume_auc(
 
 
 def bounding_box_volume(X, *, offset: float = 1e-12) -> float:
-    """Volume of the axis-aligned bounding box containing X."""
+    """Volume of the axis-aligned bounding box of ``X`` plus ``offset``.
+
+    A convenience for ``support_volume``; drawing the uniform reference
+    samples and scoring them is left to the caller.
+    """
     X = as_2d_finite(X, name="X")
     return float(np.prod(X.max(axis=0) - X.min(axis=0)) + offset)
 

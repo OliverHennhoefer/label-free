@@ -112,3 +112,74 @@ def test_mass_volume_applies_score_polarity():
 
 def test_bounding_box_volume_returns_axis_aligned_volume():
     assert bounding_box_volume([[0.0, 2.0], [1.0, 4.0]], offset=0.0) == 2.0
+
+
+def _goix_em(t, volume_support, s_unif, s_X, n_generated):
+    """em() from Goix's EMMV_benchmarks, without the AUC step."""
+    EM_t = np.zeros(t.shape[0])
+    n_samples = s_X.shape[0]
+    EM_t[0] = 1.0
+    for u in np.unique(s_X):
+        EM_t = np.maximum(
+            EM_t,
+            1.0 / n_samples * (s_X > u).sum()
+            - t * (s_unif > u).sum() / n_generated * volume_support,
+        )
+    return EM_t
+
+
+def _goix_mv(axis_alpha, volume_support, s_unif, s_X, n_generated):
+    """mv() from Goix's EMMV_benchmarks, without the AUC step."""
+    n_samples = s_X.shape[0]
+    s_X_argsort = s_X.argsort()
+    mass = 0
+    cpt = 0
+    mv = np.zeros(axis_alpha.shape[0])
+    for i in range(axis_alpha.shape[0]):
+        while mass < axis_alpha[i]:
+            cpt += 1
+            u = s_X[s_X_argsort[-cpt]]
+            mass = 1.0 / n_samples * cpt
+        mv[i] = float((s_unif >= u).sum()) / n_generated * volume_support
+    return mv
+
+
+def _goix_fixture():
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(200, 2))
+    low, high = X.min(axis=0), X.max(axis=0)
+    unif = rng.uniform(low, high, size=(5_000, 2))
+    volume = float(np.prod(high - low))
+    # Normality score: negative distance to the origin.
+    return -np.linalg.norm(X, axis=1), -np.linalg.norm(unif, axis=1), volume
+
+
+def test_mass_volume_curve_matches_goix_reference():
+    s_X, s_unif, volume = _goix_fixture()
+    alphas = np.linspace(0.9, 0.999, 50)
+
+    _, volumes = mass_volume_curve(
+        s_X,
+        s_unif,
+        support_volume=volume,
+        alpha_count=50,
+        score_polarity="higher_is_normal",
+    )
+
+    assert volumes == pytest.approx(_goix_mv(alphas, volume, s_unif, s_X, s_unif.size))
+
+
+def test_excess_mass_curve_adds_the_full_support_to_goix_reference():
+    s_X, s_unif, volume = _goix_fixture()
+    levels = np.linspace(0.0, 100 / volume, 200)
+
+    _, curve = excess_mass_curve(
+        s_X,
+        s_unif,
+        support_volume=volume,
+        levels=levels,
+        score_polarity="higher_is_normal",
+    )
+
+    reference = _goix_em(levels, volume, s_unif, s_X, s_unif.size)
+    assert curve == pytest.approx(np.maximum(reference, 1 - levels * volume))

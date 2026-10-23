@@ -1,4 +1,9 @@
-"""Score-distribution metrics from AutoUAD."""
+"""Score-distribution metrics from AutoUAD (Dai and Fan, ICLR 2025).
+
+All three are internal criteria on detector scores. Dai and Fan compute RTM
+and EAG on training-set scores and NPD on held-out scores against Gaussian
+pseudo samples; this module evaluates precomputed score vectors only.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,7 @@ import math
 
 import numpy as np
 
-from labelfree.utils.validation import orient_scores
+from labelfree._validation import check_fraction, orient_scores
 
 EPSILON = 1e-6
 
@@ -18,7 +23,28 @@ def relative_top_median_score(
     score_polarity: str = "higher_is_anomalous",
     eps: float = EPSILON,
 ) -> float:
-    """Relative Top-Median score-tail separation. Higher is better."""
+    """Relative Top-Median (RTM), Definition 3 of Dai and Fan.
+
+    ``RTM = (mean(s[s >= t]) - median(s)) / (median(s) + eps)``, where ``t`` is
+    the score at the top ``top_fraction`` cutoff. Ties at ``t`` are included.
+
+    Parameters
+    ----------
+    scores : array-like of shape (n_samples,)
+        Detector scores.
+    top_fraction : float
+        Tail fraction ``tau``; the paper uses 5%.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+    eps : float
+        Stabilizer in the denominator.
+
+    Returns
+    -------
+    float
+        Higher is better. Not invariant to score offsets, so compare it within
+        one score convention.
+    """
     scores = orient_scores(scores, score_polarity=score_polarity)
     top = _top_scores(scores, top_fraction)
     median = float(np.median(scores))
@@ -32,7 +58,29 @@ def expected_anomaly_gap_score(
     score_polarity: str = "higher_is_anomalous",
     eps: float = EPSILON,
 ) -> float:
-    """Expected Anomaly Gap over top-tail thresholds. Higher is better."""
+    """Expected Anomaly Gap (EAG), Definition 5 and Algorithm 1 of Dai and Fan.
+
+    For every split of the descending scores into the top ``k`` and the rest,
+    ``k = 1, ..., ceil(top_fraction * n)``, the anomaly gap is
+    ``k (n - k) (mu_top - mu_rest)^2 / (n (k var_top + (n - k) var_rest + eps))``
+    with population variances; EAG is the mean gap.
+
+    Parameters
+    ----------
+    scores : array-like of shape (n_samples,)
+        Detector scores.
+    top_fraction : float
+        Fraction ``rho`` of splits to average over; the paper uses 0.2.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+    eps : float
+        Stabilizer in the denominator.
+
+    Returns
+    -------
+    float
+        Higher is better.
+    """
     scores = np.sort(orient_scores(scores, score_polarity=score_polarity))[::-1]
     _check_fraction(top_fraction)
     n_samples = scores.size
@@ -68,7 +116,29 @@ def normalized_pseudo_discrepancy_score(
     score_polarity: str = "higher_is_anomalous",
     eps: float = EPSILON,
 ) -> float:
-    """Discrepancy between validation and generated score vectors. Higher is better."""
+    """Normalized Pseudo Discrepancy (NPD), Definition 6 of Dai and Fan.
+
+    ``NPD = (mean(s_gen) - mean(s_val))^2 / (2 (var(s_gen) + var(s_val)) + eps)``
+    with population variances. In the paper, ``s_val`` scores held-out
+    training samples and ``s_gen`` scores samples drawn from
+    ``N(mean, diag(var))`` of the detector's training features.
+
+    Parameters
+    ----------
+    validation_scores : array-like of shape (n_validation,)
+        Scores on held-out real samples.
+    generated_scores : array-like of shape (n_generated,)
+        Scores on generated pseudo samples.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+    eps : float
+        Stabilizer in the denominator.
+
+    Returns
+    -------
+    float
+        Higher is better.
+    """
     validation_scores = orient_scores(
         validation_scores,
         score_polarity=score_polarity,
@@ -90,5 +160,4 @@ def _top_scores(scores: np.ndarray, top_fraction: float) -> np.ndarray:
 
 
 def _check_fraction(value: float) -> None:
-    if not 0 < value < 1:
-        raise ValueError("top_fraction must be between 0 and 1")
+    check_fraction(value, name="top_fraction")

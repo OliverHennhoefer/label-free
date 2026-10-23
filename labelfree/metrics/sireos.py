@@ -1,32 +1,74 @@
-"""Similarity-based Unsupervised Evaluation of Outlier Detection (SIREOS)."""
+"""Similarity-based Internal, Relative Evaluation of Outlier Solutions (SIREOS)."""
 
 from __future__ import annotations
 
 import numpy as np
 from sklearn.metrics import pairwise_distances
 
-from labelfree.utils.validation import as_2d_finite, orient_scores
+from labelfree._validation import (
+    as_2d_finite,
+    check_positive,
+    check_same_length,
+    orient_scores,
+)
 
 
 def sireos_score(
     X,
     scores,
     *,
-    score_polarity: str = "higher_is_anomalous",
     kernel_width: float | None = None,
     kernel_quantile: float = 0.01,
+    score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Score-weighted mean heat-kernel similarity to other rows of X. Lower is better."""
+    """SIREOS index of Marques, Zimek, Campello, and Sander (SISAP 2022).
+
+    ``SIREOS = sum_j w_j * mean_{i != j} exp(-||x_j - x_i||^2 / (2 t^2))`` with
+    weights ``w_j = s_j / sum(s)``. A good solution puts its weight on samples
+    that are dissimilar to the rest of the data.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Feature matrix. Scale features before comparing solutions.
+    scores : array-like of shape (n_samples,)
+        Outlier scores. After orientation they must be non-negative with a
+        positive sum, as the index normalizes them by their total. Shifted or
+        signed scores, such as scikit-learn's ``decision_function``, should
+        first be mapped with :func:`labelfree.unify_scores`.
+    kernel_width : float, optional
+        Heat-kernel width ``t``. Defaults to the ``kernel_quantile`` quantile of
+        the non-zero pairwise distances, as in the authors' code.
+    kernel_quantile : float
+        Distance quantile used when ``kernel_width`` is omitted.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+
+    Returns
+    -------
+    float
+        SIREOS in ``[0, 1]``. Lower is better.
+    """
     X = as_2d_finite(X, name="X")
     scores = orient_scores(scores, score_polarity=score_polarity)
-    if X.shape[0] != scores.size:
-        raise ValueError("X and scores must have the same number of samples")
+    check_same_length(X, scores)
+    if X.shape[0] < 2:
+        raise ValueError("X must contain at least two samples")
+    if np.any(scores < 0) or scores.sum() == 0:
+        raise ValueError(
+            "SIREOS needs non-negative oriented scores with a positive sum; "
+            "map signed scores with labelfree.unify_scores first"
+        )
 
     distances = pairwise_distances(X)
     width = _kernel_width(distances, kernel_width, kernel_quantile)
-    similarity = _leave_one_out_similarity(distances, width)
-    weights = _score_weights(scores)
-    return float(np.dot(weights, similarity))
+    if width == 0:
+        similarity = np.ones(X.shape[0])
+    else:
+        kernel = np.exp(-(distances**2) / (2 * width**2))
+        np.fill_diagonal(kernel, 0.0)
+        similarity = kernel.sum(axis=1) / (X.shape[0] - 1)
+    return float(np.dot(scores / scores.sum(), similarity))
 
 
 def _kernel_width(
@@ -35,32 +77,10 @@ def _kernel_width(
     kernel_quantile: float,
 ) -> float:
     if kernel_width is not None:
-        if kernel_width <= 0:
-            raise ValueError("kernel_width must be positive")
-        return float(kernel_width)
+        return check_positive(kernel_width, name="kernel_width")
     if not 0 < kernel_quantile < 1:
         raise ValueError("kernel_quantile must be between 0 and 1")
-
     nonzero = distances[distances > 0]
     if nonzero.size == 0:
         return 0.0
     return float(np.quantile(nonzero, kernel_quantile))
-
-
-def _leave_one_out_similarity(distances: np.ndarray, width: float) -> np.ndarray:
-    if distances.shape[0] < 2:
-        raise ValueError("X must contain at least two samples")
-    if width == 0:
-        return np.ones(distances.shape[0])
-
-    kernel = np.exp(-(distances * distances) / (2 * width * width))
-    np.fill_diagonal(kernel, 0.0)
-    return kernel.sum(axis=1) / (kernel.shape[0] - 1)
-
-
-def _score_weights(scores: np.ndarray) -> np.ndarray:
-    shifted = scores - scores.min()
-    total = float(shifted.sum())
-    if total == 0:
-        return np.full(scores.size, 1 / scores.size)
-    return shifted / total
