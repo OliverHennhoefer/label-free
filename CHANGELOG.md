@@ -14,8 +14,8 @@
   NDCG similarity.
 - `hits_scores` uses the published `1 / rank` edge weights with the top
   outlier at rank 1.
-- `ireos_significance` adjusts IREOS for chance and reports a z-score and
-  p-value against random solutions.
+- `ireos_significance` adjusts IREOS for chance and reports a z-score and a
+  permutation p-value against random solutions.
 - IREOS follows the authors' `gamma_max` search exactly and solves kernel
   logistic regression with Newton's method in the kernel's feature space,
   which stays stable for small kernel widths.

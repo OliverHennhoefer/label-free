@@ -14,7 +14,6 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.special import expit
-from scipy.stats import norm
 
 from labelfree._validation import as_1d_finite, as_2d_finite, check_integer
 
@@ -24,6 +23,7 @@ _MAX_NEWTON_STEPS = 200
 _NEWTON_TOL = 1e-14
 _EIGEN_RTOL = 1e-12
 _BIAS_RIDGE = 1e-12
+_TIE_TOL = 1e-12
 
 
 def ireos_score(
@@ -170,7 +170,9 @@ class IREOSSignificance:
         One-sided probability that a random solution scores at least
         ``index``.
     method : str
-        ``"exact"`` for ``max_clump_size=1``; ``"monte_carlo"`` otherwise.
+        ``"exact_moments"`` for ``max_clump_size=1`` (exact ``expected`` and
+        ``std``); ``"monte_carlo"`` otherwise. The p-value is a permutation
+        p-value in both cases.
     """
 
     index: float
@@ -190,7 +192,7 @@ def ireos_significance(
     max_clump_size: int = 1,
     penalty_cost: float = 100.0,
     integration_tol: float = 0.005,
-    n_permutations: int = 100,
+    n_permutations: int | None = None,
     random_state=None,
 ) -> IREOSSignificance:
     """Adjust IREOS for chance and test it against random solutions.
@@ -206,21 +208,28 @@ def ireos_significance(
     variance are exact:
     ``E[I] = mean(AUC) / gamma_max`` and
     ``Var[I] = sum((w - mean w)^2) * sum((AUC - mean AUC)^2)
-    / ((n - 1) * (gamma_max * sum w)^2)``. The p-value then uses the normal
-    approximation. This needs one separability curve per sample.
+    / ((n - 1) * (gamma_max * sum w)^2)``. Random solutions reuse the same
+    curves, so permutations are cheap. This needs one separability curve per
+    sample.
 
     With ``max_clump_size > 1`` the costs depend on the solution, so the null
-    distribution is estimated from ``n_permutations`` permuted solutions and
-    the p-value is the permutation p-value ``(1 + #{I_perm >= I}) / (1 +
-    n_permutations)``. Each permutation costs as much as one IREOS evaluation.
+    mean and deviation are estimated from the permuted solutions, each of
+    which costs as much as one IREOS evaluation.
+
+    The p-value is always the permutation p-value
+    ``(1 + #{I_perm >= I}) / (1 + n_permutations)``, which stays valid for the
+    small, discrete null distributions of sparse or binary solutions where a
+    normal approximation would be anti-conservative. Its resolution is
+    ``1 / (1 + n_permutations)``.
 
     Parameters
     ----------
     X, outlier_probabilities, gamma_max, max_clump_size, penalty_cost, integration_tol
         As in :func:`ireos_score`. The automatic ``gamma_max`` is chosen from
         the observed solution and reused for every random solution.
-    n_permutations : int
-        Number of random solutions for ``max_clump_size > 1``.
+    n_permutations : int, optional
+        Number of random solutions. Defaults to 10,000 for
+        ``max_clump_size=1`` and 100 otherwise.
     random_state : int, numpy.random.Generator, or None
         Seed for the permutations.
 
@@ -247,6 +256,12 @@ def ireos_significance(
             penalty_cost=penalty_cost,
         )
     gamma_max = float(gamma_max)
+    if n_permutations is None:
+        n_permutations = 10_000 if max_clump_size == 1 else 100
+    check_integer(n_permutations, name="n_permutations")
+    if n_permutations < 2:
+        raise ValueError("n_permutations must be at least 2")
+    rng = np.random.default_rng(random_state)
     settings = {
         "gamma_max": gamma_max,
         "max_clump_size": max_clump_size,
@@ -272,14 +287,11 @@ def ireos_significance(
             / ((X.shape[0] - 1) * scale**2)
         )
         std = float(np.sqrt(variance))
-        z_score = _z_score(index, expected, std)
-        p_value = float(norm.sf(z_score))
-        method = "exact"
+        null = np.array(
+            [rng.permutation(weights) @ aucs / scale for _ in range(n_permutations)]
+        )
+        method = "exact_moments"
     else:
-        check_integer(n_permutations, name="n_permutations")
-        if n_permutations < 2:
-            raise ValueError("n_permutations must be at least 2")
-        rng = np.random.default_rng(random_state)
         index = _score_solution(kernel_features, weights, **settings)
         null = np.array(
             [
@@ -289,9 +301,11 @@ def ireos_significance(
         )
         expected = float(null.mean())
         std = float(null.std(ddof=1))
-        z_score = _z_score(index, expected, std)
-        p_value = float((1 + np.count_nonzero(null >= index)) / (1 + n_permutations))
         method = "monte_carlo"
+
+    z_score = _z_score(index, expected, std)
+    at_least = np.count_nonzero(null >= index - _TIE_TOL * max(1.0, abs(index)))
+    p_value = float((1 + at_least) / (1 + n_permutations))
 
     adjusted = (index - expected) / (1 - expected) if expected < 1 else 0.0
     return IREOSSignificance(

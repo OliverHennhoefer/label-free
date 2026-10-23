@@ -83,7 +83,10 @@ def unify_scores(
                 raise ValueError("logarithmic inversion requires positive scores")
             values = -np.log(values / values.max())
     if baseline is not None:
-        values = np.maximum(0.0, values - float(baseline))
+        baseline = float(baseline)
+        if not np.isfinite(baseline):
+            raise ValueError("baseline must be finite")
+        values = np.maximum(0.0, values - baseline)
 
     if method == "linear":
         low, high = values.min(), values.max()

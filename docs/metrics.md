@@ -77,10 +77,11 @@ outlier probabilities, for example from `unify_scores`, not raw scores. Use
 clump-size heuristic is `round(sqrt(0.05 * n_samples))`.
 
 `ireos_significance` adjusts the index for chance, `(I - E[I]) / (1 - E[I])`,
-and reports a z-score and p-value against solutions that assign the same
-probabilities to random samples. For `max_clump_size=1` the null moments are
-exact but need one separability curve per sample. For larger clumps they are
-estimated by permutation.
+and reports a z-score and a permutation p-value against solutions that assign
+the same probabilities to random samples. For `max_clump_size=1` the null mean
+and deviation are exact and permutations are cheap, but one separability curve
+per sample is needed. For larger clumps every permutation costs one IREOS
+evaluation.
 
 ## SIREOS
 

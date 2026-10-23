@@ -99,12 +99,12 @@ ireos_scores(
 ireos_significance(
     X, outlier_probabilities, *, gamma_max=None, max_clump_size=1,
     penalty_cost=100.0, integration_tol=0.005,
-    n_permutations=100, random_state=None,
+    n_permutations=None, random_state=None,
 ) -> IREOSSignificance
 ```
 
 `IREOSSignificance` is a frozen dataclass with `index`, `expected`, `std`,
-`adjusted`, `z_score`, `p_value`, and `method` (`"exact"` or
+`adjusted`, `z_score`, `p_value`, and `method` (`"exact_moments"` or
 `"monte_carlo"`).
 
 SIREOS needs non-negative oriented scores. IREOS needs probabilities in
