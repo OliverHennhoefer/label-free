@@ -1,9 +1,12 @@
 # labelfree
 
 `labelfree` provides small, functional metrics for comparing unsupervised
-anomaly detectors without ground-truth labels. It evaluates existing score
-vectors or candidate score matrices; it does not train detectors or own a
-model-selection workflow.
+anomaly detectors without ground-truth labels. It covers the internal
+evaluation strategies of the peer-reviewed literature: clustering indices on
+scores, feature-space separation, score-distribution criteria, IREOS and
+SIREOS, Excess-Mass and Mass-Volume curves, consensus strategies, and ranking
+stability. It evaluates existing score vectors or candidate score matrices;
+it does not train detectors or own a model-selection workflow.
 
 ## Install
 
@@ -16,7 +19,7 @@ Python 3.12 or newer is required.
 ## First metric
 
 ```python
-from labelfree.metrics import score_cluster_metrics
+from labelfree import score_cluster_metrics
 
 scores = [0.1, 0.2, 0.3, 3.8, 4.1]
 result = score_cluster_metrics(scores, n_outliers=2)
@@ -37,6 +40,10 @@ anomalous. The default is `score_polarity="higher_is_anomalous"`. Use
 
 Score polarity is separate from metric direction. For example, high input
 scores can mean anomalous while a lower Mass-Volume AUC is still better.
+
+IREOS expects outlier probabilities and SIREOS non-negative scores. Convert
+raw scores with `unify_scores`, which implements the score unification of
+Kriegel et al. (2011).
 
 ## Use metrics as evidence, not labels
 

@@ -1,4 +1,9 @@
-"""ASI and ASOI metrics for predicted anomaly partitions."""
+"""ASI and ASOI for the score-induced anomaly partition.
+
+Mahmud, Farou, and Lendak ("Anomaly separation and overlap index", Complex &
+Intelligent Systems, 2025) rate how well the predicted anomalies separate from
+the predicted normal samples in feature space.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,7 @@ import math
 
 import numpy as np
 
-from labelfree.utils.validation import as_2d_finite, split_score_labels
+from labelfree._validation import as_2d_finite, split_score_labels
 
 
 def asi_score(
@@ -17,10 +22,28 @@ def asi_score(
     contamination: float | None = None,
     score_polarity: str = "higher_is_anomalous",
 ) -> float:
-    """Anomaly Separation Index from Mahmud, Farou, and Lendak.
+    """Anomaly Separation Index (ASI), Eq. 3 of Mahmud et al.
 
-    Returns Eq. 3 from the paper: a multivariate standardized mean difference
-    between predicted normal and anomaly groups. Higher is better.
+    ``ASI = ||mean_N - mean_A|| / sqrt(sum_f pooled_var_f)``, a multivariate
+    standardized mean difference with per-feature pooled sample variances.
+    The paper mentions a normalization to ``[0, 1]`` without defining it, so
+    none is applied.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Feature matrix.
+    scores : array-like of shape (n_samples,)
+        Detector scores; the top ``n_outliers`` form the anomaly group.
+    n_outliers, contamination
+        Size of the anomaly group. Pass exactly one.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+
+    Returns
+    -------
+    float
+        Higher is better.
     """
     normal, anomaly = _split_X(
         X,
@@ -53,12 +76,31 @@ def asoi_score(
     alpha: float = 0.5314,
     beta: float = 0.4686,
 ) -> float:
-    """Anomaly Separation and Overlap Index.
+    """Anomaly Separation and Overlap Index (ASOI) of Mahmud et al.
 
-    Combines mean anomaly-to-normal-centroid separation with average
-    feature-wise Hellinger distance as defined by Mahmud et al. Higher is
-    better. The separation term is scale-dependent, so scale ``X`` before
-    comparing results across datasets.
+    ``ASOI = alpha * S + beta * H`` where ``S`` is the mean Euclidean distance
+    of predicted anomalies to the centroid of predicted normal samples and
+    ``H`` is the mean feature-wise Hellinger distance between the anomaly and
+    normal histograms (Rice rule, ``ceil(2 n^(1/3))`` shared bins). The
+    default weights are the paper's mutual-information weights.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Feature matrix. ``S`` is scale-dependent, so scale features first.
+    scores : array-like of shape (n_samples,)
+        Detector scores; the top ``n_outliers`` form the anomaly group.
+    n_outliers, contamination
+        Size of the anomaly group. Pass exactly one.
+    score_polarity : {"higher_is_anomalous", "higher_is_normal"}
+        Meaning of larger raw scores.
+    alpha, beta : float
+        Non-negative weights summing to 1.
+
+    Returns
+    -------
+    float
+        Higher is better.
     """
     _check_weights(alpha, beta)
     normal, anomaly = _split_X(

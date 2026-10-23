@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import numpy as np
 import pytest
 from scipy.optimize import minimize as reference_minimize
@@ -7,7 +5,7 @@ from scipy.spatial.distance import cdist
 from scipy.special import expit
 
 import labelfree.metrics.ireos as ireos_module
-from labelfree.metrics import ireos_score, ireos_scores
+from labelfree.metrics import ireos_score, ireos_scores, ireos_significance
 
 
 X = np.array([[0.0], [0.1], [0.2], [10.0]])
@@ -87,9 +85,9 @@ def test_ireos_scores_uses_one_gamma_range(monkeypatch):
         gamma_searches.append(probabilities.copy())
         return 2.0
 
-    def fake_aucs(distances, candidates, costs, *, gamma_max, **kwargs):
+    def fake_aucs(kernel_features, candidates, costs, *, gamma_max, **kwargs):
         auc_ranges.append(gamma_max)
-        return np.full(distances.shape[0], gamma_max)
+        return np.full(costs.size, gamma_max)
 
     monkeypatch.setattr(ireos_module, "_find_gamma_max", fake_gamma)
     monkeypatch.setattr(ireos_module, "_candidate_aucs", fake_aucs)
@@ -105,10 +103,9 @@ def test_automatic_gamma_max_separates_candidates():
     distances = cdist(X, X, metric="sqeuclidean")
     probabilities = np.array([[0.0, 0.0, 0.0, 1.0]])
     gamma = ireos_module._find_gamma_max(
-        distances,
+        ireos_module._KernelFeatures(distances),
         probabilities,
         n_features=1,
-        max_clump_size=1,
         penalty_cost=100.0,
     )
 
@@ -130,10 +127,9 @@ def test_automatic_gamma_max_reports_failure(monkeypatch):
 
     with pytest.raises(RuntimeError, match="gamma_max search"):
         ireos_module._find_gamma_max(
-            distances,
+            ireos_module._KernelFeatures(distances),
             np.array([[0.0, 0.0, 0.0, 1.0]]),
             n_features=1,
-            max_clump_size=1,
             penalty_cost=100.0,
         )
 
@@ -156,7 +152,7 @@ def test_adaptive_simpson_reports_failure(monkeypatch):
         ([0, 0, 0, 2], {"gamma_max": 1}, "between 0 and 1"),
         ([0, 0, 0, 1], {"gamma_max": 0}, "gamma_max"),
         ([0, 0, 0, 1], {"gamma_max": 1, "max_clump_size": 2}, "binary"),
-        ([0.1, 0.1, 0.1, 0.1], {}, "above 0.5"),
+        ([0.1, 0.1, 0.1, 0.1], {}, "at least 0.5"),
     ],
 )
 def test_ireos_validates_inputs(probabilities, kwargs, message):
@@ -165,16 +161,110 @@ def test_ireos_validates_inputs(probabilities, kwargs, message):
 
 
 def test_ireos_reports_optimizer_failure(monkeypatch):
-    monkeypatch.setattr(
-        ireos_module,
-        "minimize",
-        lambda *args, **kwargs: SimpleNamespace(
-            success=False, message="no convergence"
-        ),
-    )
+    monkeypatch.setattr(ireos_module, "_MAX_NEWTON_STEPS", 1)
     distances = cdist(X, X, metric="sqeuclidean")
 
-    with pytest.raises(RuntimeError, match="no convergence"):
+    with pytest.raises(RuntimeError, match="did not converge"):
         ireos_module._kernel_logistic_probability(
             distances, 1.0, 3, np.full(len(X), 100.0)
         )
+
+
+def test_kernel_logistic_regression_is_stable_for_tiny_gamma():
+    data = np.random.default_rng(0).normal(size=(150, 3))
+    distances = cdist(data, data, metric="sqeuclidean")
+
+    probability = ireos_module._kernel_logistic_probability(
+        distances, 1e-5, 0, np.full(len(data), 100.0)
+    )
+
+    assert probability == pytest.approx(1 / 150, abs=1e-3)
+
+
+def test_automatic_gamma_max_follows_author_candidate_rule(monkeypatch):
+    # The authors treat probabilities of exactly 0.5 as candidates and train
+    # with uniform costs, whatever the clump size.
+    seen = []
+
+    def fake_probability(distances, gamma, candidate, costs):
+        seen.append((candidate, costs.copy()))
+        return 0.9
+
+    monkeypatch.setattr(ireos_module, "_kernel_logistic_probability", fake_probability)
+    distances = cdist(X, X, metric="sqeuclidean")
+    probabilities = np.array([[0.5, 0.0, 0.2, 0.0], [0.0, 0.0, 0.0, 0.7]])
+
+    gamma = ireos_module._find_gamma_max(
+        ireos_module._KernelFeatures(distances),
+        probabilities,
+        n_features=1,
+        penalty_cost=100.0,
+    )
+
+    assert gamma == pytest.approx(0.001)
+    assert [candidate for candidate, _ in seen] == [0, 3]
+    assert all(np.all(costs == 100.0) for _, costs in seen)
+
+
+def _fake_curves(monkeypatch):
+    def fake_probability(distances, gamma, candidate, costs):
+        return min(1.0, (0.1 + 0.2 * candidate) * (1 + gamma) * costs.mean() / 100)
+
+    monkeypatch.setattr(ireos_module, "_kernel_logistic_probability", fake_probability)
+
+
+def test_ireos_significance_exact_moments_match_permutation_enumeration(monkeypatch):
+    from itertools import permutations
+
+    _fake_curves(monkeypatch)
+    weights = np.array([0.9, 0.0, 0.3, 0.6])
+
+    result = ireos_significance(X, weights, gamma_max=1.0)
+
+    null = [ireos_score(X, list(perm), gamma_max=1.0) for perm in permutations(weights)]
+    assert result.method == "exact"
+    assert result.index == pytest.approx(ireos_score(X, weights, gamma_max=1.0))
+    assert result.expected == pytest.approx(np.mean(null))
+    assert result.std == pytest.approx(np.std(null))
+    assert result.adjusted == pytest.approx(
+        (result.index - result.expected) / (1 - result.expected)
+    )
+    assert result.z_score == pytest.approx(
+        (result.index - result.expected) / result.std
+    )
+    assert 0 < result.p_value < 1
+
+
+def test_ireos_significance_monte_carlo_for_clumps(monkeypatch):
+    _fake_curves(monkeypatch)
+    weights = np.array([0.0, 0.0, 1.0, 1.0])
+
+    result = ireos_significance(
+        X, weights, gamma_max=1.0, max_clump_size=2, n_permutations=20, random_state=0
+    )
+    again = ireos_significance(
+        X, weights, gamma_max=1.0, max_clump_size=2, n_permutations=20, random_state=0
+    )
+
+    assert result == again
+    assert result.method == "monte_carlo"
+    assert result.index == pytest.approx(
+        ireos_score(X, weights, gamma_max=1.0, max_clump_size=2)
+    )
+    assert 1 / 21 <= result.p_value <= 1
+    with pytest.raises(ValueError, match="n_permutations"):
+        ireos_significance(
+            X, weights, gamma_max=1.0, max_clump_size=2, n_permutations=1
+        )
+
+
+def test_ireos_significance_flags_an_isolated_outlier():
+    data = np.vstack([np.linspace(0, 1, 8)[:, None], [[8.0]]])
+    weights = np.zeros(9)
+    weights[-1] = 1.0
+
+    result = ireos_significance(data, weights, gamma_max=1.0)
+
+    assert result.index > result.expected
+    assert result.adjusted > 0
+    assert result.p_value < 0.05
