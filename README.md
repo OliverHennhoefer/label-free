@@ -54,6 +54,11 @@ results.
 See the [documentation](https://oliverhennhoefer.github.io/label-free/) for
 metric selection, API details, and examples.
 
+The [internal benchmark](https://github.com/OliverHennhoefer/label-free/tree/main/benchmarks)
+compares selector hypotheses on frozen PyOD score banks from ADBench.
+Experiment records, literature reviews and open questions live in the repository's
+[research memory](https://github.com/OliverHennhoefer/label-free/tree/main/research).
+
 ## Development
 
 ```bash

@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-exclude = ["3394053.pdf"]
+exclude = ["3394053.pdf", "/AGENTS.md", "/benchmarks", "/research"]
 
 [tool.hatch.version]
 path = "labelfree/__init__.py"

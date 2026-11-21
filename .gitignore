@@ -1,4 +1,5 @@
 # Project
+.bench-runs/
 .idea
 .claude
 CLAUDE.md
