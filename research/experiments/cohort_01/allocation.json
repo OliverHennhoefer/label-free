@@ -1,0 +1,19 @@
+{
+  "split": "dev",
+  "datasets": [
+    "20_letter",
+    "23_mammography",
+    "26_optdigits",
+    "39_vertebral",
+    "41_Waveform",
+    "45_wine"
+  ],
+  "seeds": [
+    0,
+    1
+  ],
+  "max_samples": 2000,
+  "extra_views": true,
+  "selection": "six previously unopened development source groups, chosen for domain variety and manageable size before proposals",
+  "comparison": "all frozen cohort candidates graded together, no adaptive selection; no validation/test access"
+}
