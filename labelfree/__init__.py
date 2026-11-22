@@ -6,7 +6,7 @@ from labelfree.metrics import *  # noqa: F403
 from labelfree.metrics import __all__ as _metric_names
 from labelfree.scores import orient_scores, unify_scores
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "__version__",

@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: "Hennhoefer"
     given-names: "Oliver"
-version: 1.0.0
-date-released: 2026-07-10
+version: 1.1.0
+date-released: 2026-11-22
 repository-code: "https://github.com/OliverHennhoefer/label-free"
 url: "https://oliverhennhoefer.github.io/label-free/"
 license: MIT
