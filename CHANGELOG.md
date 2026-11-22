@@ -21,9 +21,13 @@
   values such as `"lower"` or `-1` are no longer read as higher-is-better.
 - `excess_mass_auc` raises when custom levels start with the curve already at
   or below `em_min`, which returned an area of 0.
+- `bounding_box_volume` raises for constant features instead of returning
+  only its `offset`, which inflated Excess-Mass areas by orders of magnitude.
 - The example notebooks score fitted rows with PyOD's leave-one-out
   `decision_scores_` instead of `decision_function`, which counts every row as
   its own neighbor.
+- The metric comparison notebook also shifts scores to be non-negative for
+  RTM and draws Excess-Mass feature subsets only from non-constant features.
 
 ## 1.0.0 - 2026-07-10
 

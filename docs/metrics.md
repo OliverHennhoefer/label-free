@@ -58,7 +58,9 @@ separation term is scale-dependent.
 ## AutoUAD
 
 RTM and EAG are computed on one score vector. RTM is not invariant to score
-offsets, so compare it within one score convention. NPD compares scores on
+offsets, so compare it within one score convention. It divides by the median
+score and raises for a negative median, where a stronger tail would score
+lower; shift signed scores to be non-negative first. NPD compares scores on
 held-out data with scores on generated Gaussian samples. The package accepts
 both score vectors and does not generate or train anything.
 

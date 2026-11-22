@@ -10,6 +10,7 @@ from labelfree import borda_scores, robust_borda_scores
 from labelfree.metrics import (
     asi_score,
     asoi_score,
+    bounding_box_volume,
     excess_mass_auc,
     expected_anomaly_gap_score,
     ireos_score,
@@ -142,3 +143,10 @@ def test_excess_mass_auc_rejects_levels_starting_below_em_min():
         excess_mass_auc(
             data, reference, support_volume=8.0, levels=np.linspace(0.2, 1, 50)
         )
+
+
+def test_bounding_box_volume_rejects_constant_features():
+    data = np.column_stack([np.arange(5.0), np.zeros(5)])
+
+    with pytest.raises(ValueError, match=r"features \[1\] are constant"):
+        bounding_box_volume(data)
