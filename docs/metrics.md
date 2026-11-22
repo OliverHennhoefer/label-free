@@ -58,7 +58,9 @@ separation term is scale-dependent.
 ## AutoUAD
 
 RTM and EAG are computed on one score vector. RTM is not invariant to score
-offsets, so compare it within one score convention. NPD compares scores on
+offsets, so compare it within one score convention. It divides by the median
+score and raises for a negative median, where a stronger tail would score
+lower; shift signed scores to be non-negative first. NPD compares scores on
 held-out data with scores on generated Gaussian samples. The package accepts
 both score vectors and does not generate or train anything.
 
@@ -167,3 +169,9 @@ authors published code, against a transcription of that code.
   change rankings within a dataset.
 - **Ties:** stability and consensus metrics give tied scores their average
   rank; author code breaks ties by sort order.
+  ASI, ASOI, and the score-cluster indices put every score tied with the
+  `n_outliers` cutoff in the anomaly group, so the split never depends on row
+  order.
+- **IREOS duplicates:** a candidate that duplicates another row of `X` cannot
+  be separated at any kernel width. The automatic `gamma_max` search skips it
+  with a warning instead of growing the width without end.

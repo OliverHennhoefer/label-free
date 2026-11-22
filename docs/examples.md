@@ -7,10 +7,17 @@ from sklearn.ensemble import IsolationForest
 from labelfree import relative_top_median_score
 
 model = IsolationForest(random_state=0).fit(X)
-scores = model.decision_function(X)
+scores = model.decision_function(X)  # signed, larger means more normal
 
-value = relative_top_median_score(scores, score_polarity="higher_is_normal")
+# RTM divides by the median score and needs non-negative anomaly scores.
+# score_samples is the negated Isolation Forest anomaly score in (0, 1].
+value = relative_top_median_score(-model.score_samples(X))
 ```
+
+For PyOD detectors, score the rows a detector was fit on with
+`decision_scores_`. Those are leave-one-out scores, whereas
+`decision_function(X_train)` counts every row as its own neighbor, so KNN with
+one neighbor scores every distinct row 0.
 
 ## Outlier probabilities for IREOS and SIREOS
 

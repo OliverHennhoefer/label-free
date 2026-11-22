@@ -63,6 +63,14 @@ def laplacian_score(
     if kernel_width is not None:
         kernel_width = check_positive(kernel_width, name="kernel_width")
 
+    spread = float(np.ptp(scores))
+    if spread == 0:
+        return math.inf
+    # The score is invariant to affine maps of the scores. Rescaling to unit
+    # range before centering keeps rounding in the weighted mean from leaving
+    # a tiny residual that would make near-constant scores look smooth.
+    scores = (scores - scores.min()) / spread
+
     weights = _neighbor_weights(X, n_neighbors, kernel_width)
     degree = np.asarray(weights.sum(axis=1)).ravel()
     centered = scores - float(scores @ degree) / float(degree.sum())

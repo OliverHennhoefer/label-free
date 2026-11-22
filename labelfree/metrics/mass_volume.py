@@ -102,6 +102,11 @@ def excess_mass_auc(
         score_polarity=score_polarity,
     )
     if em_min is not None:
+        if curve[0] <= em_min:
+            raise ValueError(
+                "the Excess-Mass curve is already at or below em_min at the first "
+                "level; start levels at 0 or pass em_min=None"
+            )
         below = np.flatnonzero(curve <= em_min)
         if below.size:
             stop = below[0] + 1
@@ -199,10 +204,20 @@ def bounding_box_volume(X, *, offset: float = 1e-12) -> float:
     """Volume of the axis-aligned bounding box of ``X`` plus ``offset``.
 
     A convenience for ``support_volume``; drawing the uniform reference
-    samples and scoring them is left to the caller.
+    samples and scoring them is left to the caller. Raises ``ValueError`` for
+    a feature with zero range, whose box has no volume: ``offset`` alone would
+    stand in for it and inflate Excess-Mass areas by many orders of
+    magnitude. Drop constant features first.
     """
     X = as_2d_finite(X, name="X")
-    return float(np.prod(X.max(axis=0) - X.min(axis=0)) + offset)
+    ranges = X.max(axis=0) - X.min(axis=0)
+    constant = np.flatnonzero(ranges == 0)
+    if constant.size:
+        raise ValueError(
+            f"features {constant.tolist()} are constant, so the bounding box has "
+            "no volume; drop constant features first"
+        )
+    return float(np.prod(ranges) + offset)
 
 
 def _normality_scores(scores, reference_scores, *, score_polarity: str):

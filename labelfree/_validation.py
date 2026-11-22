@@ -105,13 +105,25 @@ def split_score_labels(
     contamination: float | None = None,
     score_polarity: str = "higher_is_anomalous",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Orient scores and label the ``n_outliers`` largest oriented scores as 1."""
+    """Orient scores and label the ``n_outliers`` largest oriented scores as 1.
+
+    Scores tied with the ``n_outliers``-th largest score are all labeled 1, so
+    the split depends only on score values, never on row order. The anomaly
+    group can therefore hold more than ``n_outliers`` samples. Scores that tie
+    across the whole cutoff, so that no sample is left as normal, do not
+    induce a split and raise ``ValueError``.
+    """
     oriented = orient_scores(scores, score_polarity=score_polarity)
     n_outliers = resolve_outlier_count(
         oriented.size, n_outliers=n_outliers, contamination=contamination
     )
-    labels = np.zeros(oriented.size, dtype=int)
-    labels[np.argsort(oriented, kind="mergesort")[-n_outliers:]] = 1
+    threshold = np.partition(oriented, -n_outliers)[-n_outliers]
+    labels = (oriented >= threshold).astype(int)
+    if labels.all():
+        raise ValueError(
+            "scores are tied at the outlier cutoff for every sample, so they "
+            "do not split the data into anomalies and normal samples"
+        )
     return oriented, labels
 
 
