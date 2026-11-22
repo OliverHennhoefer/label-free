@@ -8,6 +8,7 @@ numerical details, and the index's adjustment for chance.
 
 from __future__ import annotations
 
+import warnings
 from collections import OrderedDict
 from dataclasses import dataclass
 
@@ -391,12 +392,34 @@ def _find_gamma_max(
     solution. Starting at ``1 / (1000 * n_features)``, gamma grows by 10% until
     the classifier, trained with uniform costs, gives the current candidate a
     probability above 0.5; separated candidates are then dropped.
+
+    A candidate whose feature row is duplicated elsewhere in ``X`` can never
+    exceed 0.5, because the classifier cannot tell the copies apart. Such
+    candidates are skipped with a warning instead of exhausting the search;
+    their separability still enters the index as usual.
     """
     pending = list(np.flatnonzero(np.any(probability_matrix >= 0.5, axis=0)))
     if not pending:
         raise ValueError(
             "automatic gamma_max requires an outlier probability of at least 0.5; "
             "pass gamma_max explicitly"
+        )
+    distances = kernel_features.squared_distances
+    duplicated = (distances == 0).sum(axis=1) > 1
+    skipped = [c for c in pending if duplicated[c]]
+    pending = [c for c in pending if not duplicated[c]]
+    if skipped:
+        warnings.warn(
+            f"{len(skipped)} gamma_max candidate(s) duplicate another row of X and "
+            "cannot be separated at any kernel width; the automatic gamma_max "
+            "search skips them",
+            RuntimeWarning,
+            stacklevel=4,
+        )
+    if not pending:
+        raise ValueError(
+            "every automatic gamma_max candidate duplicates another row of X; "
+            "remove duplicate rows or pass gamma_max explicitly"
         )
 
     costs = np.full(kernel_features.squared_distances.shape[0], penalty_cost)

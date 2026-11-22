@@ -45,8 +45,9 @@ def score_cluster_metrics(
 ) -> dict[str, float]:
     """Rate the score-induced normal/anomaly split with clustering indices.
 
-    The top ``n_outliers`` oriented scores form the anomaly cluster and all
-    remaining scores form the normal cluster. Every index is computed on the
+    The top ``n_outliers`` oriented scores, plus any scores tied with the
+    cutoff, form the anomaly cluster and all remaining scores form the normal
+    cluster. Scores tied across the whole cutoff raise ``ValueError``. Every index is computed on the
     one-dimensional scores, not on the features.
 
     Parameters
@@ -105,6 +106,10 @@ def _silhouette(split: _Split) -> float:
 
 
 def _calinski_harabasz(split: _Split) -> float:
+    # scikit-learn returns 1.0 when the within-cluster dispersion is zero,
+    # which would rank a perfect two-level split below a noisy one.
+    if split.ssw == 0:
+        return math.inf
     return calinski_harabasz_score(split.values.reshape(-1, 1), split.labels)
 
 

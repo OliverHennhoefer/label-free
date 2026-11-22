@@ -167,3 +167,9 @@ authors published code, against a transcription of that code.
   change rankings within a dataset.
 - **Ties:** stability and consensus metrics give tied scores their average
   rank; author code breaks ties by sort order.
+  ASI, ASOI, and the score-cluster indices put every score tied with the
+  `n_outliers` cutoff in the anomaly group, so the split never depends on row
+  order.
+- **IREOS duplicates:** a candidate that duplicates another row of `X` cannot
+  be separated at any kernel width. The automatic `gamma_max` search skips it
+  with a warning instead of growing the width without end.

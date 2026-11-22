@@ -102,6 +102,11 @@ def excess_mass_auc(
         score_polarity=score_polarity,
     )
     if em_min is not None:
+        if curve[0] <= em_min:
+            raise ValueError(
+                "the Excess-Mass curve is already at or below em_min at the first "
+                "level; start levels at 0 or pass em_min=None"
+            )
         below = np.flatnonzero(curve <= em_min)
         if below.size:
             stop = below[0] + 1

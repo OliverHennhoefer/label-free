@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+- ASI, ASOI, and the score-cluster indices put every score tied with the
+  `n_outliers` cutoff in the anomaly group, so results no longer depend on row
+  order. Scores tied across the whole cutoff, such as constant scores, raise
+  `ValueError` instead of receiving best-possible Davies-Bouldin and RMSSTD
+  values.
+- Calinski-Harabasz is `inf` for a split with no within-cluster spread;
+  scikit-learn's fallback of 1.0 ranked a perfect split below noisy ones.
+- EAG centers the scores before its running sums, so shifting scores by a
+  large constant no longer changes the result.
+- Laplacian Score rescales the scores before centering, so constant scores
+  are always `inf` rather than sometimes 0, the best value.
+- RTM rejects scores with a negative median, where the ratio reverses
+  direction.
+- The automatic IREOS `gamma_max` search skips candidates that duplicate
+  another row of `X`, with a warning, instead of failing.
+- `borda_scores` and `robust_borda_scores` require boolean directions, so
+  values such as `"lower"` or `-1` are no longer read as higher-is-better.
+- `excess_mass_auc` raises when custom levels start with the curve already at
+  or below `em_min`, which returned an area of 0.
+- The example notebooks score fitted rows with PyOD's leave-one-out
+  `decision_scores_` instead of `decision_function`, which counts every row as
+  its own neighbor.
+
 ## 1.0.0 - 2026-07-10
 
 - First stable functional API for label-free anomaly-detector metrics, with

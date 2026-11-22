@@ -43,11 +43,19 @@ def relative_top_median_score(
     -------
     float
         Higher is better. Not invariant to score offsets, so compare it within
-        one score convention.
+        one score convention. Raises ``ValueError`` when the median oriented
+        score is negative, where the ratio would reverse direction.
     """
     scores = orient_scores(scores, score_polarity=score_polarity)
     top = _top_scores(scores, top_fraction)
     median = float(np.median(scores))
+    if median < 0:
+        # Dividing by a negative median flips the sign, so a stronger tail
+        # would score lower. RTM assumes non-negative anomaly scores.
+        raise ValueError(
+            "RTM requires oriented scores with a non-negative median; shift "
+            "signed scores, such as decision_function output, to be non-negative"
+        )
     return (float(np.mean(top)) - median) / (median + eps)
 
 
@@ -83,6 +91,10 @@ def expected_anomaly_gap_score(
     """
     scores = np.sort(orient_scores(scores, score_polarity=score_polarity))[::-1]
     _check_fraction(top_fraction)
+    # The gap is invariant to score offsets. Centering first keeps the
+    # running sums of squares from cancelling catastrophically when the
+    # scores sit far from zero.
+    scores = scores - np.mean(scores)
     n_samples = scores.size
     top_count = min(math.ceil(n_samples * top_fraction), n_samples - 1)
     if top_count < 1:

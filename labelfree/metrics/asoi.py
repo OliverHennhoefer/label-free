@@ -34,7 +34,8 @@ def asi_score(
     X : array-like of shape (n_samples, n_features)
         Feature matrix.
     scores : array-like of shape (n_samples,)
-        Detector scores; the top ``n_outliers`` form the anomaly group.
+        Detector scores; the top ``n_outliers`` form the anomaly group, plus
+        any scores tied with the cutoff.
     n_outliers, contamination
         Size of the anomaly group. Pass exactly one.
     score_polarity : {"higher_is_anomalous", "higher_is_normal"}
@@ -89,7 +90,8 @@ def asoi_score(
     X : array-like of shape (n_samples, n_features)
         Feature matrix. ``S`` is scale-dependent, so scale features first.
     scores : array-like of shape (n_samples,)
-        Detector scores; the top ``n_outliers`` form the anomaly group.
+        Detector scores; the top ``n_outliers`` form the anomaly group, plus
+        any scores tied with the cutoff.
     n_outliers, contamination
         Size of the anomaly group. Pass exactly one.
     score_polarity : {"higher_is_anomalous", "higher_is_normal"}

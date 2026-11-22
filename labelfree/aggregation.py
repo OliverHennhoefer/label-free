@@ -107,9 +107,14 @@ def _positions(metric_matrix, higher_is_better) -> np.ndarray:
         raise ValueError("metric_matrix must have shape (n_metrics, n_models >= 2)")
     if not np.isfinite(matrix).all():
         raise ValueError("metric_matrix contains non-finite values")
-    directions = np.broadcast_to(
-        np.asarray(higher_is_better, dtype=bool), (matrix.shape[0],)
-    )
+    directions = np.asarray(higher_is_better)
+    if directions.dtype != bool:
+        # Casting strings such as "lower" or signs such as -1 to bool would
+        # silently read them as True.
+        raise ValueError("higher_is_better must be a bool or a sequence of bools")
+    if directions.ndim > 1 or directions.size not in (1, matrix.shape[0]):
+        raise ValueError("higher_is_better needs one direction per metric row")
+    directions = np.broadcast_to(directions, (matrix.shape[0],))
     oriented = np.where(directions[:, None], -matrix, matrix)
     return rankdata(oriented, axis=1, method="average")
 
