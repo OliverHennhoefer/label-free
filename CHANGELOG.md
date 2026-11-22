@@ -1,12 +1,34 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 - 2026-11-22
+
+This release fixes metric implementation errors found in an audit for
+degenerate inputs (ties, constant scores, offsets, duplicate rows) and metric
+direction.
+
+### Behavior changes
+
+Some inputs that used to return a misleading value now raise `ValueError`:
+
+- constant scores, or scores tied across the whole `n_outliers` cutoff, in
+  `asi_score`, `asoi_score`, and `score_cluster_metrics`;
+- `relative_top_median_score` with a negative median oriented score;
+- non-boolean `higher_is_better` values in `borda_scores` and
+  `robust_borda_scores`;
+- `bounding_box_volume` with a constant feature;
+- `excess_mass_auc` with custom levels whose curve starts at or below `em_min`.
+
+Results also change for ASI, ASOI, and the score-cluster indices whenever
+scores tie at the cutoff, because every tied score now joins the anomaly
+group.
+
+### Metric fixes
 
 - ASI, ASOI, and the score-cluster indices put every score tied with the
   `n_outliers` cutoff in the anomaly group, so results no longer depend on row
-  order. Scores tied across the whole cutoff, such as constant scores, raise
-  `ValueError` instead of receiving best-possible Davies-Bouldin and RMSSTD
-  values.
+  order.
+- Constant scores no longer receive the best possible Davies-Bouldin and
+  RMSSTD values; they raise because they do not split the data.
 - Calinski-Harabasz is `inf` for a split with no within-cluster spread;
   scikit-learn's fallback of 1.0 ranked a perfect split below noisy ones.
 - EAG centers the scores before its running sums, so shifting scores by a
@@ -25,9 +47,26 @@
   only its `offset`, which inflated Excess-Mass areas by orders of magnitude.
 - The example notebooks score fitted rows with PyOD's leave-one-out
   `decision_scores_` instead of `decision_function`, which counts every row as
-  its own neighbor.
-- The metric comparison notebook also shifts scores to be non-negative for
-  RTM and draws Excess-Mass feature subsets only from non-constant features.
+  its own neighbor. The metric comparison notebook also shifts scores to be
+  non-negative for RTM and draws Excess-Mass feature subsets only from
+  non-constant features.
+
+### Dependencies
+
+- Minimum versions are now numpy 1.26, scipy 1.11.2, and scikit-learn 1.3.1,
+  the oldest releases that install and pass on Python 3.12. The previous
+  bounds (numpy 1.24, scipy 1.10) have no Python 3.12 wheels.
+
+### Documentation and CI
+
+- The README is organized around choosing a metric, with a runnable quick
+  start that ranks four scikit-learn detectors.
+- CI tests the minimum dependencies, weekly pre-releases of NumPy, SciPy, and
+  scikit-learn, and macOS and Windows on Python 3.14, and builds and
+  smoke-tests the package on every pull request. Dependabot keeps the
+  GitHub Actions current.
+- The documentation deploy works again with the current GitHub Pages
+  actions, and pull requests now check that the site builds.
 
 ## 1.0.0 - 2026-07-10
 
