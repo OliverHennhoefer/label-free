@@ -17,6 +17,9 @@ VERSION = 1
 REVISION = "3dac8221081e190f157d78e93bfa8867f90d0965"
 TAIL = 0.05
 DEFAULT = "IForest/default"
+# These ranking-based endpoints are available even on historical banks.
+ENDPOINTS = ("ap", "auroc", "pr_auc_trapezoid", "precision_at_budget")
+TARGETS = (*ENDPOINTS, "f1")
 
 
 def digest(path: Path) -> str:

@@ -1,6 +1,8 @@
 import argparse
 from pathlib import Path
 
+from .protocol import TARGETS
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -63,9 +65,15 @@ def main():
     grade.add_argument("--truth", type=Path, required=True)
     grade.add_argument("--submissions", type=Path, nargs="+", required=True)
     grade.add_argument(
+        "--target",
+        choices=TARGETS,
+        default="ap",
+        help="Supervised score whose detector choice the normal-only metric aims to match",
+    )
+    grade.add_argument(
         "--reference",
         default="iforest_default",
-        help="Selector for paired AP differences",
+        help="Reference selector for paired score differences",
     )
     grade.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()

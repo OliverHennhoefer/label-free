@@ -14,6 +14,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     auc,
     average_precision_score,
+    f1_score,
     precision_recall_curve,
     roc_auc_score,
 )
@@ -22,6 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from . import protocol
 from .protocol import (
     DEFAULT,
+    ENDPOINTS,
     REVISION,
     TAIL,
     VERSION,
@@ -33,7 +35,6 @@ from .protocol import (
 )
 
 MANIFEST = Path(__file__).with_name("adbench.csv")
-ENDPOINTS = ("ap", "auroc", "pr_auc_trapezoid", "precision_at_budget")
 
 
 def portfolio(seed):
@@ -149,7 +150,7 @@ def holdout_views(train, hold, models, scores, rng, seed):
     return view
 
 
-def oracle(y, scores):
+def oracle(y, scores, *, f1_thresholds=None):
     if np.unique(y).size != 2:
         return None
     columns = {name: [] for name in ENDPOINTS}
@@ -167,6 +168,11 @@ def oracle(y, scores):
             strict=True,
         ):
             columns[name].append(float(value))
+    if f1_thresholds is not None:
+        columns["f1"] = [
+            float(f1_score(y, np.asarray(s) > t, zero_division=0))
+            for s, t in zip(scores, f1_thresholds, strict=True)
+        ]
     return columns
 
 
@@ -278,6 +284,12 @@ def prepare(args):
                 output = public / f"{key}.npz"
                 np.savez_compressed(output, **arrays)
                 bank["tasks"][key] = digest(output)
+                # Calibrate each detector's alert cutoff on known normals alone.
+                f1_thresholds = None
+                if track == "normal-only":
+                    f1_thresholds = np.quantile(
+                        arrays["scores"], 1 - TAIL, axis=1, method="inverted_cdf"
+                    )
                 truth[key] = {
                     "dataset": row["dataset"],
                     "source": row["source"],
@@ -285,11 +297,15 @@ def prepare(args):
                     "n": len(test_labels),
                     "features": arrays["X"].shape[1],
                     "positives": int(test_labels.sum()),
-                    "outcomes": oracle(test_labels, test_scores),
+                    "outcomes": oracle(
+                        test_labels, test_scores, f1_thresholds=f1_thresholds
+                    ),
                 }
                 if track == "normal-only":
                     truth[key].update(
-                        n_fit=len(arrays["train"]), n_select=len(arrays["X"])
+                        n_fit=len(arrays["train"]),
+                        n_select=len(arrays["X"]),
+                        f1_thresholds=f1_thresholds.tolist(),
                     )
                 print(f"Prepared {row['dataset']} seed {seed}", flush=True)
         bank_id = fingerprint(bank)

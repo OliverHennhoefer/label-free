@@ -1,6 +1,6 @@
 # Batch model-selection benchmark
 
-The primary experiment asks which PyOD detector to choose when you have only **known-normal examples**. Its primary outcome is **AP regret**, the best detector's average precision on a hidden mixed test set minus the chosen detector's average precision there. A perfect choice has zero regret. The harness and its data live outside the public package.
+The experiment asks how closely a metric using only **known-normal examples** can reproduce the detector choice a supervised evaluation would make. Name a target such as ROC AUC, PR AUC or F1 before grading. Compare the hidden test score of the chosen detector with the best test score among the same fitted candidates. This difference is the **selection gap** (regret). If the best ROC AUC is 0.94 and the chosen detector achieves 0.93, the gap is 0.01. The metric used to choose can have any numerical scale. The harness and its data live outside the public package.
 
 ## Normal-only protocol
 
@@ -33,7 +33,7 @@ python -m benchmarks run --bank "$run/dev/public" \
 
 python -m benchmarks grade --truth "$run/dev/private" \
   --submissions "$run/baselines" "$run/trial-001" \
-  --reference iforest_default --out "$run/report-001"
+  --target auroc --reference iforest_default --out "$run/report-001"
 ```
 
 For the next iteration, run the new selector against the **same public directory**. Grade both trial directories together with the cached baselines. Pass the previous selector's full name from its report as `--reference` for a paired comparison. Each run has a new output path and snapshots its source and hypothesis. Changing the portfolio, evidence, preprocessing or row sample creates a new bank. The grader checks bank IDs and requires every submitted selector to account for every task.
@@ -70,11 +70,15 @@ To reproduce the old four-source quickstart, use the dataset and seed list above
 
 ## Reading a report
 
-The `track` field identifies the preparation protocol. In a normal-only development report, `n_fit` and `n_select` count the normal rows for fitting and selection, and `n` counts the private test rows. The grader privately computes AP using scikit-learn's non-interpolated definition, AUROC, trapezoidal PR area and precision at the fixed 5% alert budget. ADBench's implementation calls AP `aucpr`. The report preserves both PR definitions under distinct names. Every endpoint includes selected utility, regret to its own oracle, and within-task Spearman correlation where defined. [ADBench grader](https://github.com/Minqi824/ADBench/blob/3dac8221081e190f157d78e93bfa8867f90d0965/adbench/myutils.py) · [AP definition](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html)
+The `track` field identifies the preparation protocol. In a normal-only development report, `n_fit` and `n_select` count the normal rows for fitting and selection, and `n` counts the private test rows. Set `--target` to `auroc`, `pr_auc_trapezoid`, `ap`, `f1` or `precision_at_budget`. `ap` remains the command's default. `pr_auc_trapezoid` integrates the precision–recall curve by trapezoids. `ap` uses non-interpolated average precision, which ADBench calls `aucpr`. `precision_at_budget` evaluates the top 5% of test scores. [ADBench grader](https://github.com/Minqi824/ADBench/blob/3dac8221081e190f157d78e93bfa8867f90d0965/adbench/myutils.py) · [AP definition](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html)
+
+**F1 needs an alert cutoff.** For each detector the normal-only preparer takes the empirical 95th percentile of its scores on the selection normals (inverse empirical CDF). A test score strictly above that fixed cutoff is an alert. This flags at most 5% of the selection normals, with ties at the cutoff treated as normal. The actual alert rate on new data can differ. The grader computes ordinary binary F1 from the test labels at that cutoff. F1 requires a newly prepared normal-only bank containing these cutoffs.
+
+For each available supervised score the report gives the chosen detector's score and gap to the supervised best. `*_best_pick_rate` is the probability of picking one of the supervised winners under the tie policy. Within-task Spearman correlation measures agreement over the whole ranking where defined. A development report also names the actual `supervised_winners` on each task for the declared target. Validation and test expose aggregates only.
 
 Tied winners receive the expected utility of a uniform choice among them. `uniform_model` is the mean utility of every candidate. Fixed controls expose the default Isolation Forest and every other individual configuration. Choose a strong fixed control on development and freeze it before validation. A failed, unavailable or abstaining selector falls back to default Isolation Forest. Status counts expose exactly how often it supplied a ranking. A single-class batch is ungradable and is omitted for every method, with its count reported.
 
-The report averages seeds within datasets, datasets within source groups and source groups equally. Its interval for the paired AP difference resamples whole source groups 5,000 times. A one-source run has no interval. Four-source smoke results can test the software and suggest a failure mode. A publication claim needs more independent sources and a frozen comparison.
+The report averages seeds within datasets, datasets within source groups and source groups equally. Intervals for paired differences to the reference resample whole source groups 5,000 times. `source_wins` counts sources where the selector beats the reference on the declared target. A one-source run has no interval. Four-source smoke results can test the software and suggest a failure mode. A publication claim needs more independent sources and a frozen comparison.
 
 ## Giving agents access
 

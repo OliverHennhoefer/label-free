@@ -5,9 +5,11 @@ import numpy as np
 import pytest
 
 from benchmarks import prepare
-from benchmarks.grade import grade, group_means
+from benchmarks.grade import evaluate_choice, grade, group_means
 from benchmarks.protocol import (
     DEFAULT,
+    ENDPOINTS,
+    TARGETS,
     VERSION,
     digest,
     fingerprint,
@@ -58,6 +60,19 @@ def test_hierarchical_average():
         {"source": "b", "dataset": "z", "value": 1.0},
     ]
     np.testing.assert_array_equal(group_means(rows, "value"), [0.5, 1.0])
+
+
+def test_same_detector_choice_can_match_roc_auc_and_miss_f1():
+    y = np.array([0, 0, 1, 1])
+    scores = np.array([[0, 1, 2, 3], [-1, 3, 2, 1]])
+    outcomes = prepare.oracle(y, scores, f1_thresholds=[3, 0])
+    assert outcomes["auroc"] == [1.0, 0.5]
+    assert outcomes["f1"] == pytest.approx([0, 0.8])  # Equal to the cutoff is normal.
+    choice = evaluate_choice({"status": "ok", "ranks": [1, 2]}, outcomes, ["A", "B"], 0)
+    assert choice["auroc_regret"] == 0 and choice["auroc_best_pick_rate"] == 1
+    assert (
+        choice["f1_regret"] == pytest.approx(0.8) and choice["f1_best_pick_rate"] == 0
+    )
 
 
 @pytest.fixture
@@ -132,6 +147,8 @@ def test_freeze_grade_and_failures(tmp_path, bank):
     grade(args)
     report = read_json(args.out / "report.json")
     assert report["track"] == "transductive"  # Older private keys predate track names.
+    assert report["target"] == "ap"
+    assert report["supervised_winners"] == {"task": [DEFAULT]}
     flat, bad, abstain = (
         next(k for k in report["summary"] if k.startswith(n + "@"))
         for n in ("flat", "bad", "abstain")
@@ -142,13 +159,17 @@ def test_freeze_grade_and_failures(tmp_path, bank):
     assert report["summary"][bad]["ap"] == report["summary"]["iforest_default"]["ap"]
     assert report["summary"][flat]["delta_ap_ci95"] is None
     assert report["by_task"][flat][0]["selected"] == [DEFAULT, "other"]
+    assert report["summary"][flat]["ap_best_pick_rate"] == 0.5
+    with pytest.raises(ValueError, match="Target 'f1' is unavailable"):
+        grade(Namespace(**vars(args), target="f1"))
 
     key = read_json(private / "truth.json")
     key["split"] = "test"
     write_json(private / "truth.json", key)
     args.out = tmp_path / "holdout-report"
     grade(args)
-    assert "by_task" not in read_json(args.out / "report.json")
+    hidden_report = read_json(args.out / "report.json")
+    assert "by_task" not in hidden_report and "supervised_winners" not in hidden_report
     key["bank_id"] = "wrong"
     write_json(private / "truth.json", key)
     with pytest.raises(ValueError, match="different benchmark bank"):
@@ -339,8 +360,13 @@ def test_prepare_and_baselines_on_pyod(tmp_path, monkeypatch, track):
         np.testing.assert_allclose(
             batch.scores, [m.decision_function(sel) for m in models]
         )
+        ordered_normals = np.sort(batch.scores, axis=1)
+        thresholds = ordered_normals[:, len(sel) - 1 - len(sel) // 20]
+        np.testing.assert_array_equal(task["f1_thresholds"], thresholds)
         expected = prepare.oracle(
-            y[sampled[test]], [m.decision_function(hidden) for m in models]
+            y[sampled[test]],
+            [m.decision_function(hidden) for m in models],
+            f1_thresholds=thresholds,
         )
         for name in expected:
             np.testing.assert_allclose(task["outcomes"][name], expected[name])
@@ -365,18 +391,32 @@ def test_prepare_and_baselines_on_pyod(tmp_path, monkeypatch, track):
     outcomes = submission["tasks"][key]
     assert all(r["status"] == "ok" for r in outcomes.values()), outcomes
     assert len(outcomes) >= 28
-    assert set(task["outcomes"]) == set(prepare.ENDPOINTS)
+    assert set(task["outcomes"]) == set(
+        TARGETS if track == "normal-only" else ENDPOINTS
+    )
     out = tmp_path / "grade"
+    target = "f1" if track == "normal-only" else "auroc"
     grade(
         Namespace(
             truth=args.out / "private",
             submissions=[trial],
             out=out,
             reference="iforest_default",
+            target=target,
         )
     )
     report = read_json(out / "report.json")
     assert report["track"] == track
+    assert report["target"] == target
+    values = task["outcomes"][target]
+    assert report["supervised_winners"][key] == [
+        n for n, v in zip(truth["candidates"], values, strict=True) if v == max(values)
+    ]
+    assert (
+        report["summary"]["iforest_default"][f"{target}_regret"]
+        == max(values) - values[0]
+    )
+    assert report["summary"]["iforest_default"][f"delta_{target}"] == 0
     assert report["summary"]["iforest_default"]["ap"] == task["outcomes"]["ap"][0]
     if track == "normal-only":
         assert report["by_task"]["iforest_default"][0]["n_fit"] == task["n_fit"]

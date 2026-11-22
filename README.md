@@ -55,7 +55,7 @@ See the [documentation](https://oliverhennhoefer.github.io/label-free/) for
 metric selection, API details, and examples.
 
 The [internal benchmark](https://github.com/OliverHennhoefer/label-free/tree/main/benchmarks)
-fits PyOD detectors on known-normal ADBench records, selects among them using normal data, and grades the frozen choice on a separate hidden mixture of normal records and outliers.
+tests how closely a detector chosen using only known-normal ADBench records matches the best PyOD detector under a supervised score such as ROC AUC, PR AUC or F1. The labeled comparison uses a separate hidden mixture of normal records and real outliers.
 Experiment records, literature reviews and open questions live in the repository's
 [research memory](https://github.com/OliverHennhoefer/label-free/tree/main/research).
 

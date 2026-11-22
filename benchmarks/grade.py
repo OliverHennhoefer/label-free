@@ -6,7 +6,15 @@ from pathlib import Path
 import numpy as np
 from scipy.stats import rankdata, spearmanr
 
-from .protocol import DEFAULT, VERSION, digest, new_directory, read_json, write_json
+from .protocol import (
+    DEFAULT,
+    TARGETS,
+    VERSION,
+    digest,
+    new_directory,
+    read_json,
+    write_json,
+)
 
 DEFAULT_POLICY = "iforest_default"
 RANDOM_POLICY = "uniform_model"
@@ -67,7 +75,11 @@ def evaluate_choice(item, outcomes, candidates, default):
     }
     diagnostics = {}
     for name, values in outcomes.items():
-        diagnostics[f"{name}_regret"] = max(values) - quality[name]
+        best = max(values)
+        diagnostics[f"{name}_regret"] = best - quality[name]
+        diagnostics[f"{name}_best_pick_rate"] = float(
+            np.mean(np.asarray(values)[chosen] == best)
+        )
         correlation = None
         if ranks is not None and np.ptp(ranks) and np.ptp(values):
             correlation = float(spearmanr(-ranks, values).statistic)
@@ -96,28 +108,32 @@ def group_means(records, column):
     )
 
 
-def summarize(records):
-    endpoints = ("ap", "auroc", "pr_auc_trapezoid", "precision_at_budget")
+def summarize(records, target="ap"):
+    endpoints = [e for e in TARGETS if e in records[0]]
     columns = (
         *endpoints,
         *(f"{e}_regret" for e in endpoints),
+        *(f"{e}_best_pick_rate" for e in endpoints),
         *(f"spearman_{e}" for e in endpoints),
-        "delta_ap",
+        *(f"delta_{e}" for e in endpoints),
     )
     means = {c: group_means(records, c) for c in columns}
-    delta = means["delta_ap"]
-    interval = None
+    delta = means[f"delta_{target}"]
+    intervals = {f"delta_{e}_ci95": None for e in endpoints}
     if len(delta) >= 2:
-        rng = np.random.default_rng(0)
-        replicates = rng.choice(delta, (5000, len(delta)), replace=True).mean(axis=1)
-        interval = np.quantile(replicates, [0.025, 0.975]).tolist()
+        draws = np.random.default_rng(0).integers(len(delta), size=(5000, len(delta)))
+        for e in endpoints:
+            replicates = means[f"delta_{e}"][draws].mean(axis=1)
+            intervals[f"delta_{e}_ci95"] = np.quantile(
+                replicates, [0.025, 0.975]
+            ).tolist()
     statuses = {
         s: sum(row["status"] == s for row in records)
         for s in ("ok", "abstained", "failed", "unavailable")
     }
     return {
         **{c: float(v.mean()) if len(v) else None for c, v in means.items()},
-        "delta_ap_ci95": interval,
+        **intervals,
         "sources": len(delta),
         "source_wins": int(np.sum(delta > 0)),
         "tasks": len(records),
@@ -127,6 +143,7 @@ def summarize(records):
 
 def grade(args):
     truth = read_json(args.truth / "truth.json")
+    target = getattr(args, "target", "ap")
     submissions, provenance = load_trials(args.submissions, truth)
     candidates = truth["candidates"]
     default = candidates.index(DEFAULT)
@@ -137,12 +154,24 @@ def grade(args):
             "status": "ok",
             "ranks": rankdata(np.arange(len(candidates)) != index).tolist(),
         }
-    records, skipped = defaultdict(list), []
+    records, skipped, supervised_winners = defaultdict(list), [], {}
     for key, task in truth["tasks"].items():
         outcomes = task["outcomes"]
         if outcomes is None:
             skipped.append(key)
             continue
+        if target not in outcomes:
+            raise ValueError(
+                f"Target {target!r} is unavailable in this grading key. "
+                "For F1, prepare a normal-only bank with calibrated alert thresholds."
+            )
+        best = {e: max(scores) for e, scores in outcomes.items()}
+        if truth["split"] == "dev":
+            supervised_winners[key] = [
+                name
+                for name, score in zip(candidates, outcomes[target], strict=True)
+                if score == best[target]
+            ]
         choices = {**submissions[key], **controls}
         assessed = {
             name: evaluate_choice(item, outcomes, candidates, default)
@@ -152,7 +181,7 @@ def grade(args):
             raise ValueError(
                 f"Reference selector missing from submissions: {args.reference}"
             )
-        reference = assessed[args.reference]["ap"]
+        reference = assessed[args.reference]
         for name, values in assessed.items():
             records[name].append(
                 {
@@ -164,8 +193,8 @@ def grade(args):
                     "n": task["n"],
                     **{k: task[k] for k in ("n_fit", "n_select") if k in task},
                     "features": task["features"],
-                    "oracle_ap": max(outcomes["ap"]),
-                    "delta_ap": values["ap"] - reference,
+                    **{f"oracle_{e}": value for e, value in best.items()},
+                    **{f"delta_{e}": values[e] - reference[e] for e in outcomes},
                 }
             )
     if not records:
@@ -175,22 +204,30 @@ def grade(args):
         "bank_id": truth["bank_id"],
         "track": truth.get("track", "transductive"),
         "split": truth["split"],
+        "target": target,
         "reference": args.reference,
         "submissions": provenance,
         "grader_sha256": digest(Path(__file__)),
         "single_class_tasks": len(skipped),
-        "summary": {name: summarize(rows) for name, rows in sorted(records.items())},
+        "summary": {
+            name: summarize(rows, target) for name, rows in sorted(records.items())
+        },
     }
     if truth["split"] == "dev":
         report["by_task"] = dict(records)
+        report["supervised_winners"] = supervised_winners
         report["single_class_task_ids"] = skipped
     with new_directory(args.out) as output:
         write_json(output / "report.json", report)
-    print(f"Results for the {report['track']} track")
-    print(f"{'selector':36} {'AP':>7} {'regret':>8} {'delta AP':>9} {'scored':>9}")
+    print(f"Results for the {report['track']} track, supervised target {target}")
+    print(
+        f"{'selector':36} {'score':>7} {'gap':>8} {'vs ref':>9} {'best pick':>10} {'scored':>9}"
+    )
     for name, row in report["summary"].items():
         print(
-            f"{name:36} {row['ap']:7.3f} {row['ap_regret']:8.3f} {row['delta_ap']:+9.3f} {row['status_counts']['ok']:5}/{row['tasks']}"
+            f"{name:36} {row[target]:7.3f} {row[f'{target}_regret']:8.3f} "
+            f"{row[f'delta_{target}']:+9.3f} {row[f'{target}_best_pick_rate']:10.1%} "
+            f"{row['status_counts']['ok']:5}/{row['tasks']}"
         )
     if skipped:
         print(f"{len(skipped)} single-class batches omitted for all selectors.")

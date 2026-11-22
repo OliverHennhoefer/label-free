@@ -1,6 +1,6 @@
 # Running a first research loop
 
-The decision is which detector to trust when every real example available for fitting and selection is known to be normal. The hidden question is how well the chosen detector will rank real outliers in a separate test. A contribution can improve an existing estimate or introduce a different observable. A result can be valuable under a specified data-generating process. For example, two detectors may agree on every normal record and behave differently beyond the observed range. What justified assumption about future faults would favor one of them?
+The decision is which detector to select using only known-normal examples so its supervised score is as close as possible to the best detector’s on a separate labeled test. Specify the target before seeing grades. ROC AUC, PR AUC and F1 can favor different detectors. A good choice has a small gap to the best detector for the declared target, even when the label-free metric uses a different numerical scale. A contribution can improve an existing estimate or introduce a different observable under a specified data-generating process. For example, two detectors may agree on every normal record and behave differently beyond the observed range. What justified assumption about future faults would favor one of them?
 
 ## A brief to give a research agent
 
