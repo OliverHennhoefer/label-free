@@ -78,6 +78,7 @@ def run(args):
         }
         trial = {
             "bank_id": bank_id,
+            "track": bank.get("track", "transductive"),
             "version": VERSION,
             "provenance": provenance,
             "hypothesis": args.hypothesis,
@@ -109,4 +110,6 @@ def run(args):
                 results = selectors.baselines(batch, args.ireos_rows)
             trial["tasks"][key] = results
         write_json(output / "submission.json", trial)
-    print(f"Saved {len(trial['tasks'])} ranked batches to {args.out}")
+    print(
+        f"Saved {len(trial['tasks'])} ranked batches on the {trial['track']} track to {args.out}"
+    )

@@ -67,7 +67,7 @@ def baselines(batch, ireos_rows):
     add("hits", lambda: lf.hits_scores(S))
     add("ens", lambda: lf.ens_scores(S))
 
-    if views:
+    if "refits" in views:
         add(
             "npd",
             lambda: [

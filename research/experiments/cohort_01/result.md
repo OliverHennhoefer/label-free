@@ -2,6 +2,8 @@
 
 **Decision, 2026-11-22.** The cohort produced two falsifiable single-batch proposals. One went through the six-source transfer and failed its comparison with a simpler control. The other failed the inventor's synthetic decision test and was withheld. The most promising theoretical result concerns identifying some AP orderings under a different, explicit information budget. The first cohort established no general ADBench improvement or publication priority. [Frozen decisions](submissions.md) · [Independent critique](critique/frozen_review.md)
 
+**Scope clarification.** This historical run fitted and selected detectors on mixed observations. Its AP scores do not answer the project’s primary question about selecting from known-normal data only. [Corrected benchmark](../../../benchmarks/README.md#normal-only-protocol)
+
 ## The fresh single-batch test
 
 Six previously unopened development source groups, two seeds per group and eight candidate detectors. Each model choice was frozen before the evaluator released supervised results. One source gets one vote in the means. For abstentions the deployed policy uses default Isolation Forest. There were no ungradable tasks or runtime failures in the two reflection submissions. The four source groups from the original development bank had already informed hypothesis generation. [Allocation](allocation.json) · [Machine-readable decisions and outcomes for both banks](development.json)
@@ -44,11 +46,11 @@ For the original single-batch question, the clearest unresolved condition is acc
 
 ## Reproduction
 
-Use the pinned benchmark dependencies. The original four-source bank and baseline commands are in the [benchmark quickstart](../../../benchmarks/README.md). The reflection probe both runs its synthetic experiment and materializes the byte-identical standalone clipped control. Choose fresh output directories for a replay. Run from the repository root.
+Use the pinned benchmark dependencies. The original four-source bank and baseline commands are in the [historical mixed-data quickstart](../../../benchmarks/README.md#replaying-the-mixed-data-pilot). The reflection probe both runs its synthetic experiment and materializes the byte-identical standalone clipped control. Choose fresh output directories for a replay. Run from the repository root.
 
 ```sh
 python -m research.experiments.cohort_01.mechanism.probe --out .bench-runs/replay-cohort/control
-python -m benchmarks prepare --download --raw-dir .bench-runs/replay-cohort/raw \
+python -m benchmarks prepare --track transductive --download --raw-dir .bench-runs/replay-cohort/raw \
   --split dev --datasets 20_letter 23_mammography 26_optdigits 39_vertebral 41_Waveform 45_wine \
   --seeds 0 1 --extra-views --out .bench-runs/replay-cohort/bank
 

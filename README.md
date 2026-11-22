@@ -55,7 +55,7 @@ See the [documentation](https://oliverhennhoefer.github.io/label-free/) for
 metric selection, API details, and examples.
 
 The [internal benchmark](https://github.com/OliverHennhoefer/label-free/tree/main/benchmarks)
-compares selector hypotheses on frozen PyOD score banks from ADBench.
+fits PyOD detectors on known-normal ADBench records, selects among them using normal data, and grades the frozen choice on a separate hidden mixture of normal records and outliers.
 Experiment records, literature reviews and open questions live in the repository's
 [research memory](https://github.com/OliverHennhoefer/label-free/tree/main/research).
 

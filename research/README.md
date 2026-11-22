@@ -1,8 +1,10 @@
 # Research memory
 
-Start here when resuming the project. The question is when evidence available on an unlabeled batch can identify a useful detector for a specified supervised decision. The current experiments use ADBench and PyOD. The research record also has room for other populations, including time series.
+**The research question is how to choose an anomaly detector when all the examples available to you are known to be normal.** Fit the PyOD detectors on normal records. Use other normal records to choose one. Freeze the choice. A separate, private test containing both normal records and real outliers tells us how well that choice worked. The ADBench curator uses its labels to assemble these sets. The person or method choosing the detector gets only normal observations and their detector scores. [Normal-only benchmark](../benchmarks/README.md#normal-only-protocol)
 
-## What we know so far
+The first cohort used mixed observations for both fitting and selection. Its grades answer a different question. We have verified the corrected setup on artificial test fixtures. There is no normal-only ADBench research result from the first cohort.
+
+## Historical findings and their scope
 
 | Finding or open question | Scope and evidence | Decision |
 | --- | --- | --- |

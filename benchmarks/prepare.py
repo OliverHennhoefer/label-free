@@ -111,10 +111,16 @@ def extra_views(raw, seed):
     order = rng.permutation(len(raw))
     cut = int(len(raw) * 0.7)
     train, hold = scale(raw[order[:cut]], raw[order[cut:]])
-    gaussian = rng.normal(train.mean(axis=0), train.std(axis=0), size=hold.shape)
     models = [m.fit(train) for m in portfolio(seed).values()]
+    scores = np.stack([m.decision_function(hold) for m in models])
+    return holdout_views(train, hold, models, scores, rng, seed)
+
+
+def holdout_views(train, hold, models, scores, rng, seed):
+    """Optional evidence computed exclusively from the fitting and selection sets."""
+    gaussian = rng.normal(train.mean(axis=0), train.std(axis=0), size=hold.shape)
     view = {
-        "validation": np.stack([m.decision_function(hold) for m in models]),
+        "validation": scores,
         "gaussian": np.stack([m.decision_function(gaussian) for m in models]),
     }
     refits = []
@@ -164,7 +170,49 @@ def oracle(y, scores):
     return columns
 
 
+def normal_partitions(labels):
+    """Partition already shuffled rows. Reserve about a quarter of each class for grading."""
+    normals = np.flatnonzero(labels == 0)
+    outliers = np.flatnonzero(labels == 1)
+    test_normals = (len(normals) + 3) // 4
+    test_outliers = (len(outliers) + 3) // 4
+    test = np.sort(np.concatenate((normals[:test_normals], outliers[:test_outliers])))
+    clean = normals[test_normals:]
+    cut = 2 * len(clean) // 3
+    return clean[:cut], clean[cut:], test
+
+
+def normal_only_task(batch, labels, seed, with_views):
+    fit, select, test = normal_partitions(labels)
+    smallest_fit = int(0.8 * len(fit)) if with_views else len(fit)
+    if smallest_fit <= 25:
+        raise ValueError(
+            "The 25-neighbor detector needs at least 26 normal fitting rows in every fit. "
+            "Increase --max-samples or use a dataset with more normal rows."
+        )
+    train, hold, hidden = scale(batch[fit], batch[select], batch[test])
+    models = [m.fit(train) for m in portfolio(seed).values()]
+    scores = np.stack([m.decision_function(hold) for m in models])
+    public = {"X": hold, "scores": scores, "train": train}
+    if with_views:
+        public.update(
+            holdout_views(
+                train, hold, models, scores, np.random.default_rng(seed), seed
+            )
+        )
+    hidden_scores = np.stack([m.decision_function(hidden) for m in models])
+    return public, labels[test], hidden_scores
+
+
+def transductive_task(batch, labels, seed, with_views):
+    (X,) = scale(batch)
+    scores = np.stack([m.fit(X).decision_scores_ for m in portfolio(seed).values()])
+    views = extra_views(batch, seed) if with_views else {}
+    return {"X": X, "scores": scores, **views}, labels, scores
+
+
 def prepare(args):
+    track = getattr(args, "track", "normal-only")
     if (
         args.max_samples < 80
         or len(set(args.seeds)) != len(args.seeds)
@@ -178,7 +226,7 @@ def prepare(args):
         names = list(portfolio(args.seeds[0]))
         bank = {
             "version": VERSION,
-            "track": "transductive",
+            "track": track,
             "split": args.split,
             "revision": REVISION,
             "max_samples": args.max_samples,
@@ -197,6 +245,10 @@ def prepare(args):
             "manifest_sha256": digest(MANIFEST),
             "tasks": {},
         }
+        build_task = {
+            "normal-only": normal_only_task,
+            "transductive": transductive_task,
+        }[track]
         truth = {}
         for row in datasets(args.split, args.datasets):
             path = verified_file(args.raw_dir, row, args.download)
@@ -215,13 +267,12 @@ def prepare(args):
                     : args.max_samples
                 ]
                 batch, y = np.asarray(raw[indices], dtype=float), labels[indices]
-                (X,) = scale(batch)
-                scores = np.stack(
-                    [m.fit(X).decision_scores_ for m in portfolio(seed).values()]
+                arrays, test_labels, test_scores = build_task(
+                    batch, y, seed, args.extra_views
                 )
-                views = extra_views(batch, seed) if args.extra_views else {}
-                arrays = {"X": X, "scores": scores, **views}
-                if any(not np.isfinite(v).all() for v in arrays.values()):
+                if any(
+                    not np.isfinite(v).all() for v in (*arrays.values(), test_scores)
+                ):
                     raise ValueError(f"Non-finite scores in {path.name}, seed {seed}")
                 key = f"task-{len(truth):04d}"
                 output = public / f"{key}.npz"
@@ -231,11 +282,15 @@ def prepare(args):
                     "dataset": row["dataset"],
                     "source": row["source"],
                     "seed": seed,
-                    "n": len(y),
-                    "features": X.shape[1],
-                    "positives": int(y.sum()),
-                    "outcomes": oracle(y, scores),
+                    "n": len(test_labels),
+                    "features": arrays["X"].shape[1],
+                    "positives": int(test_labels.sum()),
+                    "outcomes": oracle(test_labels, test_scores),
                 }
+                if track == "normal-only":
+                    truth[key].update(
+                        n_fit=len(arrays["train"]), n_select=len(arrays["X"])
+                    )
                 print(f"Prepared {row['dataset']} seed {seed}", flush=True)
         bank_id = fingerprint(bank)
         write_json(public / "bank.json", {**bank, "bank_id": bank_id})
@@ -243,6 +298,7 @@ def prepare(args):
             private / "truth.json",
             {
                 "bank_id": bank_id,
+                "track": track,
                 "candidates": names,
                 "split": args.split,
                 "tasks": truth,

@@ -131,6 +131,7 @@ def test_freeze_grade_and_failures(tmp_path, bank):
     )
     grade(args)
     report = read_json(args.out / "report.json")
+    assert report["track"] == "transductive"  # Older private keys predate track names.
     flat, bad, abstain = (
         next(k for k in report["summary"] if k.startswith(n + "@"))
         for n in ("flat", "bad", "abstain")
@@ -218,19 +219,70 @@ def test_pinned_download_rejects_wrong_blob(tmp_path, monkeypatch):
     assert list(raw.iterdir()) == []
 
 
-def test_prepare_and_baselines_on_pyod(tmp_path, monkeypatch):
+def test_prepare_cli_defaults_to_normal_only(monkeypatch):
+    import sys
+
+    from benchmarks.__main__ import main
+
+    received = []
+    monkeypatch.setattr(prepare, "prepare", lambda args: received.append(args.track))
+    monkeypatch.setattr(
+        sys, "argv", ["benchmarks", "prepare", "--raw-dir", "raw", "--out", "bank"]
+    )
+    main()
+    assert received == ["normal-only"]
+
+
+def test_changing_private_measurements_changes_only_the_grades(monkeypatch):
+    class FirstFeature:
+        def fit(self, X):
+            self.mean = X.mean(axis=0)
+            return self
+
+        def decision_function(self, X):
+            return (X - self.mean)[:, 0]
+
+    monkeypatch.setattr(prepare, "portfolio", lambda seed: {"probe": FirstFeature()})
+    X = np.random.default_rng(6).normal(size=(192, 4))
+    y = (np.arange(len(X)) % 4 == 0).astype(int)
+    fit, selection, test = prepare.normal_partitions(y)
+    assert not y[fit].any() and not y[selection].any()
+    assert len(np.unique(np.r_[fit, selection, test])) == len(fit) + len(
+        selection
+    ) + len(test)
+    assert set(y[test]) == {0, 1}
+    X[y == 1, 0] = 100
+    X[:, -1] = 0
+    changed = X.copy()
+    changed[test] += (
+        10  # Even private normal observations must be invisible at selection.
+    )
+    changed[y == 1] = -100
+    public, labels, hidden = prepare.normal_only_task(X, y, 6, True)
+    public_again, labels_again, hidden_again = prepare.normal_only_task(
+        changed, y, 6, True
+    )
+    assert public["X"].shape == (len(selection), 3)
+    for key in public:
+        np.testing.assert_array_equal(public[key], public_again[key])
+    assert prepare.oracle(labels, hidden)["auroc"] == [1.0]
+    assert prepare.oracle(labels_again, hidden_again)["auroc"] == [0.0]
+
+
+@pytest.mark.parametrize("track", ["normal-only", "transductive"])
+def test_prepare_and_baselines_on_pyod(tmp_path, monkeypatch, track):
     pytest.importorskip("pyod")
     import hashlib
 
     from benchmarks.protocol import read_batch
-    from benchmarks.selectors import baselines
 
     path = tmp_path / "fixture.npz"
     rng = np.random.default_rng(12)
-    X = rng.normal(size=(140, 6))
+    X = rng.normal(size=(280, 6))
     X[:3, 2] = np.nan
     X[:, 5] = 1
-    np.savez(path, X=X, y=(np.arange(140) % 7 == 0).astype(int))
+    y = (np.arange(len(X)) % 7 == 0).astype(int)
+    np.savez(path, X=X, y=y)
     data = path.read_bytes()
     blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
     manifest = tmp_path / "datasets.csv"
@@ -247,8 +299,9 @@ def test_prepare_and_baselines_on_pyod(tmp_path, monkeypatch):
         raw_dir=tmp_path,
         datasets=["fixture"],
         split="dev",
+        track=track,
         seeds=[5],
-        max_samples=128,
+        max_samples=256 if track == "normal-only" else 128,
         extra_views=True,
         download=False,
         out=tmp_path / "prepared",
@@ -258,19 +311,72 @@ def test_prepare_and_baselines_on_pyod(tmp_path, monkeypatch):
     bank = read_json(public / "bank.json")
     key, sha = next(iter(bank["tasks"].items()))
     batch = read_batch(public, key, sha, bank["families"])
-    assert batch.X.shape == (128, 5)
-    assert set(batch.views) == {
+    truth = read_json(args.out / "private" / "truth.json")
+    task = truth["tasks"][key]
+    assert bank["track"] == truth["track"] == track
+    expected_views = {
         "validation",
         "gaussian",
         "refits",
         "projected_real",
         "uniform",
     }
+    if track == "normal-only":
+        expected_views.add("train")
+        sampled = np.random.default_rng(5).permutation(len(y))[: args.max_samples]
+        fit, select, test = prepare.normal_partitions(y[sampled])
+        tr, sel, hidden = prepare.scale(
+            X[sampled[fit]], X[sampled[select]], X[sampled[test]]
+        )
+        np.testing.assert_allclose(batch.views["train"], tr)
+        np.testing.assert_allclose(batch.X, sel)
+        assert (task["n_fit"], task["n_select"], task["n"]) == (
+            len(tr),
+            len(sel),
+            len(hidden),
+        )
+        models = [m.fit(tr) for m in prepare.portfolio(5).values()]
+        np.testing.assert_allclose(
+            batch.scores, [m.decision_function(sel) for m in models]
+        )
+        expected = prepare.oracle(
+            y[sampled[test]], [m.decision_function(hidden) for m in models]
+        )
+        for name in expected:
+            np.testing.assert_allclose(task["outcomes"][name], expected[name])
+    else:
+        assert batch.X.shape == (128, 5)
+    assert set(batch.views) == expected_views
     assert set(np.load(public / f"{key}.npz").files) == {"X", "scores", *batch.views}
     assert "fixture" not in (public / "bank.json").read_text()
-    outcomes = baselines(batch, None)
+    trial = tmp_path / "baselines"
+    run(
+        Namespace(
+            bank=public,
+            out=trial,
+            selector=None,
+            hypothesis=None,
+            ireos_rows=None,
+            timeout=30,
+        )
+    )
+    submission = read_json(trial / "submission.json")
+    assert submission["track"] == track
+    outcomes = submission["tasks"][key]
     assert all(r["status"] == "ok" for r in outcomes.values()), outcomes
     assert len(outcomes) >= 28
-    assert set(
-        read_json(args.out / "private" / "truth.json")["tasks"][key]["outcomes"]
-    ) == set(prepare.ENDPOINTS)
+    assert set(task["outcomes"]) == set(prepare.ENDPOINTS)
+    out = tmp_path / "grade"
+    grade(
+        Namespace(
+            truth=args.out / "private",
+            submissions=[trial],
+            out=out,
+            reference="iforest_default",
+        )
+    )
+    report = read_json(out / "report.json")
+    assert report["track"] == track
+    assert report["summary"]["iforest_default"]["ap"] == task["outcomes"]["ap"][0]
+    if track == "normal-only":
+        assert report["by_task"]["iforest_default"][0]["n_fit"] == task["n_fit"]

@@ -34,7 +34,7 @@ The effect of the refit almost cancels across sources. On the Wisconsin data it 
 
 ## Reproduce from the repository root
 
-Create the four-source bank and run its built-in baselines and `trial-001` as in the [benchmark quickstart](../../../benchmarks/README.md). The pooled control is the exact source from the earlier one-bin ablation. Run its command below once if the saved `trial-002` directory is absent. Choose fresh output directories when repeating an experiment.
+Create the four-source bank and run its built-in baselines and `trial-001` as in the [historical mixed-data quickstart](../../../benchmarks/README.md#replaying-the-mixed-data-pilot). The pooled control is the exact source from the earlier one-bin ablation. Run its command below once if the saved `trial-002` directory is absent. Choose fresh output directories when repeating an experiment.
 
 ```sh
 python -m benchmarks run --bank .bench-runs/dev/public \

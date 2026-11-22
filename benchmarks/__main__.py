@@ -13,6 +13,12 @@ def main():
     )
     prep.add_argument("--raw-dir", type=Path, required=True)
     prep.add_argument(
+        "--track",
+        choices=("normal-only", "transductive"),
+        default="normal-only",
+        help="Fit and select on known normals (default), or replay the historical mixed-batch experiment",
+    )
+    prep.add_argument(
         "--download",
         action="store_true",
         help="Fetch missing files from the pinned ADBench revision",

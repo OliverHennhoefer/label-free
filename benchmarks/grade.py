@@ -162,6 +162,7 @@ def grade(args):
                     "source": task["source"],
                     "seed": task["seed"],
                     "n": task["n"],
+                    **{k: task[k] for k in ("n_fit", "n_select") if k in task},
                     "features": task["features"],
                     "oracle_ap": max(outcomes["ap"]),
                     "delta_ap": values["ap"] - reference,
@@ -172,6 +173,7 @@ def grade(args):
     report = {
         "version": VERSION,
         "bank_id": truth["bank_id"],
+        "track": truth.get("track", "transductive"),
         "split": truth["split"],
         "reference": args.reference,
         "submissions": provenance,
@@ -184,6 +186,7 @@ def grade(args):
         report["single_class_task_ids"] = skipped
     with new_directory(args.out) as output:
         write_json(output / "report.json", report)
+    print(f"Results for the {report['track']} track")
     print(f"{'selector':36} {'AP':>7} {'regret':>8} {'delta AP':>9} {'scored':>9}")
     for name, row in report["summary"].items():
         print(
