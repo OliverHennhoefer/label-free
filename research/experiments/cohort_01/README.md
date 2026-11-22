@@ -1,5 +1,7 @@
 # First independent research cohort
 
+Completed on 2026-11-22. [Conclusions and per-source results](result.md) · [Frozen submissions](submissions.md) · [Development evidence](development.json)
+
 ## Evaluation decision recorded before proposals
 
 Referee allocation SHA-256 `58960e47318c61f433b5eed5ff6a2542b1dca4d8cf80d9a28474c1ac7fb8a626`.

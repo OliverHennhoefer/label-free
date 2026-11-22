@@ -1,0 +1,903 @@
+{
+  "description": "Released development evidence only. Each task lists selected APs in the stated selector order; the two reflection methods also have their actual picks and statuses. Scores are the private grader outputs for these now-open development tasks.",
+  "selector_order": [
+    "reflection_excess@f19fa6c64a8b",
+    "clipped_reflection@a9e0ba400c81",
+    "iforest_default",
+    "fixed/IForest/64",
+    "s_dbw",
+    "hits",
+    "pooled_agreement@5ece314d973c",
+    "uniform_model"
+  ],
+  "banks": {
+    "open": {
+      "bank_id": "6ab661ca92df7587328766829cfb3e085def8ab7ac5208df23eeaddaca4baff2",
+      "report_sha256": "87cb012eb3ddcc41022470c98e3e49bff504aada23932ae3c319c2c78dacdba1",
+      "grader_sha256": "509002b6bd97614d3275a92191396da2c5093de6430a71fc0bd9fa6482e4ad84",
+      "ungradable_tasks": 0,
+      "summary": {
+        "reflection_excess@f19fa6c64a8b": {
+          "ap": 0.6125667734201099,
+          "ap_regret": 0.15136817988156065,
+          "auroc": 0.8070209169932645,
+          "pr_auc_trapezoid": 0.6103713924995814,
+          "precision_at_budget": 0.594969342251951,
+          "status_counts": {
+            "ok": 3,
+            "abstained": 5,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "clipped_reflection@a9e0ba400c81": {
+          "ap": 0.6125667734201099,
+          "ap_regret": 0.15136817988156065,
+          "auroc": 0.8070209169932645,
+          "pr_auc_trapezoid": 0.6103713924995814,
+          "precision_at_budget": 0.594969342251951,
+          "status_counts": {
+            "ok": 3,
+            "abstained": 5,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "iforest_default": {
+          "ap": 0.704664360414371,
+          "ap_regret": 0.059270592887299724,
+          "auroc": 0.857340303855251,
+          "pr_auc_trapezoid": 0.7033102666702085,
+          "precision_at_budget": 0.7904821627647715,
+          "status_counts": {
+            "ok": 8,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "fixed/IForest/64": {
+          "ap": 0.7056149180385236,
+          "ap_regret": 0.05832003526314701,
+          "auroc": 0.8554244591522697,
+          "pr_auc_trapezoid": 0.7041964060546947,
+          "precision_at_budget": 0.7943608324043107,
+          "status_counts": {
+            "ok": 8,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "s_dbw": {
+          "ap": 0.7263699099101921,
+          "ap_regret": 0.03756504339147845,
+          "auroc": 0.8755722252782008,
+          "pr_auc_trapezoid": 0.7250078837812558,
+          "precision_at_budget": 0.7877647714604237,
+          "status_counts": {
+            "ok": 8,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "hits": {
+          "ap": 0.7179743308844327,
+          "ap_regret": 0.045960622417237876,
+          "auroc": 0.8719319300929953,
+          "pr_auc_trapezoid": 0.7165054235975573,
+          "precision_at_budget": 0.7914914795349578,
+          "status_counts": {
+            "ok": 8,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "pooled_agreement@5ece314d973c": {
+          "ap": 0.7292633188328402,
+          "ap_regret": 0.03467163446883044,
+          "auroc": 0.881886213917356,
+          "pr_auc_trapezoid": 0.7277584486416513,
+          "precision_at_budget": 0.7800654960981048,
+          "status_counts": {
+            "ok": 8,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "uniform_model": {
+          "ap": 0.6004831882823463,
+          "ap_regret": 0.16345176501932435,
+          "auroc": 0.7753609636869196,
+          "pr_auc_trapezoid": 0.5986202632787733,
+          "precision_at_budget": 0.6362868788819875,
+          "status_counts": {
+            "ok": 8,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        }
+      },
+      "tasks": [
+        {
+          "task": "task-0000",
+          "dataset": "4_breastw",
+          "source": "wisconsin-breast",
+          "seed": 0,
+          "n": 683,
+          "features": 9,
+          "oracle_ap": 0.9825488621424826,
+          "ap": [
+            0.971150465728138,
+            0.971150465728138,
+            0.971150465728138,
+            0.9825488621424826,
+            0.971150465728138,
+            0.9429625268618735,
+            0.9768496639353104,
+            0.7949981292135992
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0001",
+          "dataset": "4_breastw",
+          "source": "wisconsin-breast",
+          "seed": 1,
+          "n": 683,
+          "features": 9,
+          "oracle_ap": 0.9847770534928826,
+          "ap": [
+            0.9643254193674493,
+            0.9643254193674493,
+            0.9643254193674493,
+            0.9847770534928826,
+            0.9847770534928826,
+            0.9643254193674493,
+            0.9847770534928826,
+            0.7945005173754538
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0002",
+          "dataset": "6_cardio",
+          "source": "cardiotocography",
+          "seed": 0,
+          "n": 1831,
+          "features": 21,
+          "oracle_ap": 0.6157283226208499,
+          "ap": [
+            0.6157283226208499,
+            0.6157283226208499,
+            0.6157283226208499,
+            0.6157154785434293,
+            0.4794658991124454,
+            0.6157154785434293,
+            0.6157283226208499,
+            0.39662856187322887
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0003",
+          "dataset": "6_cardio",
+          "source": "cardiotocography",
+          "seed": 1,
+          "n": 1831,
+          "features": 21,
+          "oracle_ap": 0.5293174119134513,
+          "ap": [
+            0.5092761890018458,
+            0.5092761890018458,
+            0.5092761890018458,
+            0.5293174119134513,
+            0.4794658991124454,
+            0.5293174119134513,
+            0.5092761890018458,
+            0.37254622621525385
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0004",
+          "dataset": "18_Ionosphere",
+          "source": "ionosphere",
+          "seed": 0,
+          "n": 351,
+          "features": 32,
+          "oracle_ap": 0.9277524786182387,
+          "ap": [
+            0.41318573422864524,
+            0.41318573422864524,
+            0.7821997758250794,
+            0.763323950195542,
+            0.9277524786182387,
+            0.7821997758250794,
+            0.845598503519823,
+            0.7213750249201429
+          ],
+          "reflection_and_control": [
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0005",
+          "dataset": "18_Ionosphere",
+          "source": "ionosphere",
+          "seed": 1,
+          "n": 351,
+          "features": 32,
+          "oracle_ap": 0.9277524786182387,
+          "ap": [
+            0.4131584173108971,
+            0.4131584173108971,
+            0.8034510444378663,
+            0.7354303789721893,
+            0.9277524786182387,
+            0.8492971117559076,
+            0.8418998952837383,
+            0.7209013670123305
+          ],
+          "reflection_and_control": [
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0006",
+          "dataset": "29_Pima",
+          "source": "pima",
+          "seed": 0,
+          "n": 768,
+          "features": 8,
+          "oracle_ap": 0.5718015095036105,
+          "ap": [
+            0.5233331196107377,
+            0.5233331196107377,
+            0.5008071468414219,
+            0.5233331196107377,
+            0.5202975022995742,
+            0.5299884614041357,
+            0.5299884614041357,
+            0.5029135059195285
+          ],
+          "reflection_and_control": [
+            {
+              "status": "ok",
+              "selected": [
+                "IForest/64"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "IForest/64"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0007",
+          "dataset": "29_Pima",
+          "source": "pima",
+          "seed": 1,
+          "n": 768,
+          "features": 8,
+          "oracle_ap": 0.5718015095036105,
+          "ap": [
+            0.4903765194923165,
+            0.4903765194923165,
+            0.4903765194923165,
+            0.5104730894374739,
+            0.5202975022995742,
+            0.5299884614041357,
+            0.5299884614041357,
+            0.5000021737292324
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fresh": {
+      "bank_id": "209bfba0d0b84a61d994edda73c9b728313fa02c2d362682b21471cfa7a92d7d",
+      "report_sha256": "912ce71a95f98acb55b98c115670227f57f4a4bd29af3d26d3a1b60ca7c1932a",
+      "grader_sha256": "509002b6bd97614d3275a92191396da2c5093de6430a71fc0bd9fa6482e4ad84",
+      "ungradable_tasks": 0,
+      "summary": {
+        "reflection_excess@f19fa6c64a8b": {
+          "ap": 0.13317143177261984,
+          "ap_regret": 0.16294470425524407,
+          "auroc": 0.6791915487611266,
+          "pr_auc_trapezoid": 0.12432864401286246,
+          "precision_at_budget": 0.11264880952380951,
+          "status_counts": {
+            "ok": 3,
+            "abstained": 9,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "clipped_reflection@a9e0ba400c81": {
+          "ap": 0.1654151535297622,
+          "ap_regret": 0.13070098249810175,
+          "auroc": 0.6927065658790851,
+          "pr_auc_trapezoid": 0.1546347333158293,
+          "precision_at_budget": 0.17217261904761905,
+          "status_counts": {
+            "ok": 4,
+            "abstained": 8,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "iforest_default": {
+          "ap": 0.10595528077423295,
+          "ap_regret": 0.190160855253631,
+          "auroc": 0.670892840388889,
+          "pr_auc_trapezoid": 0.098202420107949,
+          "precision_at_budget": 0.0650297619047619,
+          "status_counts": {
+            "ok": 12,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "fixed/IForest/64": {
+          "ap": 0.11600365021412844,
+          "ap_regret": 0.1801124858137355,
+          "auroc": 0.6696891216922972,
+          "pr_auc_trapezoid": 0.1069552003155158,
+          "precision_at_budget": 0.08675595238095236,
+          "status_counts": {
+            "ok": 12,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "s_dbw": {
+          "ap": 0.20616384338266078,
+          "ap_regret": 0.08995229264520312,
+          "auroc": 0.7578617729001111,
+          "pr_auc_trapezoid": 0.19192224379013414,
+          "precision_at_budget": 0.20221560846560846,
+          "status_counts": {
+            "ok": 12,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "hits": {
+          "ap": 0.10752900417433686,
+          "ap_regret": 0.18858713185352705,
+          "auroc": 0.613320608813224,
+          "pr_auc_trapezoid": 0.099848981795902,
+          "precision_at_budget": 0.08252976190476191,
+          "status_counts": {
+            "ok": 12,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "pooled_agreement@5ece314d973c": {
+          "ap": 0.09727551055350303,
+          "ap_regret": 0.19884062547436088,
+          "auroc": 0.5957943401662374,
+          "pr_auc_trapezoid": 0.09134859137124436,
+          "precision_at_budget": 0.04645833333333333,
+          "status_counts": {
+            "ok": 12,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        },
+        "uniform_model": {
+          "ap": 0.15088904476463097,
+          "ap_regret": 0.14522709126323294,
+          "auroc": 0.6714499978496854,
+          "pr_auc_trapezoid": 0.14187418029637303,
+          "precision_at_budget": 0.13200066137566138,
+          "status_counts": {
+            "ok": 12,
+            "abstained": 0,
+            "failed": 0,
+            "unavailable": 0
+          }
+        }
+      },
+      "tasks": [
+        {
+          "task": "task-0000",
+          "dataset": "20_letter",
+          "source": "letter",
+          "seed": 0,
+          "n": 1600,
+          "features": 32,
+          "oracle_ap": 0.5507325267496974,
+          "ap": [
+            0.10168870269854907,
+            0.10168870269854907,
+            0.10168870269854907,
+            0.08299464566327072,
+            0.3304030626088762,
+            0.10168870269854907,
+            0.10168870269854907,
+            0.23213049378116768
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0001",
+          "dataset": "20_letter",
+          "source": "letter",
+          "seed": 1,
+          "n": 1600,
+          "features": 32,
+          "oracle_ap": 0.5507325267496974,
+          "ap": [
+            0.08320945068415053,
+            0.08320945068415053,
+            0.08320945068415053,
+            0.07284096935171858,
+            0.3304030626088762,
+            0.08320945068415053,
+            0.08320945068415053,
+            0.22849110795666883
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0002",
+          "dataset": "23_mammography",
+          "source": "mammography",
+          "seed": 0,
+          "n": 2000,
+          "features": 6,
+          "oracle_ap": 0.1457886369926731,
+          "ap": [
+            0.10386522116229872,
+            0.10386522116229872,
+            0.10386522116229872,
+            0.09778162405763748,
+            0.1457886369926731,
+            0.11390383524616582,
+            0.11390383524616582,
+            0.10674463325447606
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0003",
+          "dataset": "23_mammography",
+          "source": "mammography",
+          "seed": 1,
+          "n": 2000,
+          "features": 6,
+          "oracle_ap": 0.2218633274643801,
+          "ap": [
+            0.1954008092317234,
+            0.1954008092317234,
+            0.1954008092317234,
+            0.2218633274643801,
+            0.15616143908074098,
+            0.1954008092317234,
+            0.16888092572249913,
+            0.157442156771879
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0004",
+          "dataset": "26_optdigits",
+          "source": "optdigits",
+          "seed": 0,
+          "n": 2000,
+          "features": 62,
+          "oracle_ap": 0.21007196823177945,
+          "ap": [
+            0.05091340526417508,
+            0.05091340526417508,
+            0.05091340526417508,
+            0.05435050243101375,
+            0.17935587928025082,
+            0.02634207822626728,
+            0.024167075912997913,
+            0.07741556879029818
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0005",
+          "dataset": "26_optdigits",
+          "source": "optdigits",
+          "seed": 1,
+          "n": 2000,
+          "features": 62,
+          "oracle_ap": 0.24777648851339598,
+          "ap": [
+            0.04237872105446,
+            0.04237872105446,
+            0.04237872105446,
+            0.04879904274110492,
+            0.19523363563989482,
+            0.022858630300444823,
+            0.022858630300444823,
+            0.08145744242172046
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0006",
+          "dataset": "39_vertebral",
+          "source": "vertebral",
+          "seed": 0,
+          "n": 240,
+          "features": 6,
+          "oracle_ap": 0.11754852171436034,
+          "ap": [
+            0.08897808451060807,
+            0.08688465794919625,
+            0.09877056755757721,
+            0.09756266596556579,
+            0.10060009525524687,
+            0.0972135783721072,
+            0.09756266596556579,
+            0.09908299073320768
+          ],
+          "reflection_and_control": [
+            {
+              "status": "ok",
+              "selected": [
+                "KNN/25"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/10"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0007",
+          "dataset": "39_vertebral",
+          "source": "vertebral",
+          "seed": 1,
+          "n": 240,
+          "features": 6,
+          "oracle_ap": 0.11754852171436034,
+          "ap": [
+            0.0886756027708796,
+            0.0886756027708796,
+            0.08747527106947506,
+            0.0886756027708796,
+            0.10060009525524687,
+            0.08897808451060807,
+            0.08984543893445324,
+            0.09656019577285914
+          ],
+          "reflection_and_control": [
+            {
+              "status": "ok",
+              "selected": [
+                "IForest/64"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "IForest/64"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0008",
+          "dataset": "41_Waveform",
+          "source": "waveform",
+          "seed": 0,
+          "n": 2000,
+          "features": 21,
+          "oracle_ap": 0.09349907649043639,
+          "ap": [
+            0.047307625925998194,
+            0.047307625925998194,
+            0.047307625925998194,
+            0.05294989537712699,
+            0.04590871359806884,
+            0.09159732179575941,
+            0.047307625925998194,
+            0.06268627989323611
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0009",
+          "dataset": "41_Waveform",
+          "source": "waveform",
+          "seed": 1,
+          "n": 2000,
+          "features": 21,
+          "oracle_ap": 0.16691933930088826,
+          "ap": [
+            0.05374494720301698,
+            0.05374494720301698,
+            0.05374494720301698,
+            0.06121118024706356,
+            0.048443770616089996,
+            0.14950308235295978,
+            0.05374494720301698,
+            0.09151151335177353
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0010",
+          "dataset": "45_wine",
+          "source": "wine",
+          "seed": 0,
+          "n": 129,
+          "features": 13,
+          "oracle_ap": 0.5654563492063491,
+          "ap": [
+            0.17643826155922931,
+            0.5654563492063491,
+            0.17643826155922931,
+            0.24024383551425843,
+            0.4205338648279825,
+            0.08938209079316517,
+            0.18094238353112382,
+            0.2831756522371317
+          ],
+          "reflection_and_control": [
+            {
+              "status": "abstained",
+              "selected": [
+                "IForest/default"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            }
+          ]
+        },
+        {
+          "task": "task-0011",
+          "dataset": "45_wine",
+          "source": "wine",
+          "seed": 1,
+          "n": 129,
+          "features": 13,
+          "oracle_ap": 0.5654563492063491,
+          "ap": [
+            0.5654563492063491,
+            0.5654563492063491,
+            0.23027038588014198,
+            0.27277051098552113,
+            0.4205338648279825,
+            0.23027038588014198,
+            0.1831944445170711,
+            0.2939705022111536
+          ],
+          "reflection_and_control": [
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            },
+            {
+              "status": "ok",
+              "selected": [
+                "HBOS/5"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
