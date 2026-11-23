@@ -9,6 +9,7 @@ Source: deck.json (slide order), deck.css (style), slides/<id>.html (one
 Fonts (Inter, JetBrains Mono) load from Google Fonts, so the build needs
 network access.
 """
+
 import json
 from pathlib import Path
 
