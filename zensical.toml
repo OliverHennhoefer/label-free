@@ -14,6 +14,7 @@ nav = [
     {"Choose a metric" = "metrics.md"},
     {"API reference" = "api.md"},
     {"Examples" = "examples.md"},
+    {"Slides" = "slides.md"},
 ]
 
 [project.theme]
