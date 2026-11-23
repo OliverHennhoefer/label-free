@@ -1,0 +1,11 @@
+<section id="practice">
+<h2>In practice</h2>
+<div class="rows">
+<div class="r"><p class="a">Baseline</p><p class="b">Compare against a strong default, not against random.</p></div>
+<div class="r"><p class="a">Sanity check</p><p class="b">A metric must rank a random scorer last.</p></div>
+<div class="r"><p class="a">Scope</p><p class="b">Most reliable for tuning within one detector type.</p></div>
+<div class="r"><p class="a">Combine</p><p class="b">Aggregate metrics with different assumptions.</p></div>
+<div class="r" style="border-bottom:2px solid var(--line)"><p class="a">Labels</p><p class="b">A few confirmed anomalies beat any internal metric.</p></div>
+</div>
+<aside>The metrics narrow choices and catch broken detectors. Rankings from several metrics can be merged by Borda counting; Goswami et al. drop the most influential metrics first. Use labels for the final decision whenever any exist.</aside>
+</section>

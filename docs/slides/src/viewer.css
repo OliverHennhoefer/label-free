@@ -1,0 +1,11 @@
+* { margin: 0 }
+body { font: 32px/1.2 sans-serif }
+body > section { width: 1920px !important; height: 1080px !important; overflow: hidden !important; box-sizing: border-box !important; position: relative; isolation: isolate }
+section[hidden], aside, noscript { display: none !important }
+h1 { font-size: 96px; font-weight: 600 }
+h2 { font-size: 64px; font-weight: 600 }
+h3 { font-size: 44px; font-weight: 600 }
+p, li, h1, h2, h3, td, th { overflow-wrap: break-word; text-wrap: pretty }
+table { width: 100%; border-collapse: separate; border-spacing: 0; border: solid #0003; border-width: 2px 0 0 2px }
+th, td { padding: .35em .6em; text-align: left; border: solid #0003; border-width: 0 2px 2px 0 }
+x-shape, x-icon, x-embed { display: block }

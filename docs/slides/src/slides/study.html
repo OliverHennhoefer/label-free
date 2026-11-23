@@ -1,0 +1,32 @@
+<section id="study">
+<h2>Contaminated data: 297 detectors, 39 datasets</h2>
+<p class="sub">Mean average precision of the detector each metric selects. Ma et al., 2023.</p>
+<div class="fig" style="gap:32px">
+<div style="width:240px; padding-top:48px; flex-shrink:0"><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">EM</p><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">IREOS</p><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">Cluster indices</p><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">ENS</p><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">UDR</p><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">HITS</p><p style="height:60px; line-height:60px; font-size:28px; text-align:right; color:var(--ink)">MC</p></div>
+<div style="position:relative; width:1000px; height:470px; flex-shrink:0">
+<div style="position:absolute; left:350px; top:48px; width:2px; height:420px; background:var(--line)"></div>
+<div style="position:absolute; left:825px; top:48px; width:2px; height:420px; background:var(--ink)"></div>
+<p style="position:absolute; left:250px; top:0; width:200px; font-size:24px; text-align:center; color:var(--grey)">Random</p>
+<p style="position:absolute; left:675px; top:0; width:300px; font-size:24px; text-align:center; color:var(--ink)">iForest, random settings</p>
+<div style="position:absolute; left:169px; top:64px; width:28px; height:28px; border-radius:14px; background:#8E8E93"></div>
+<p style="position:absolute; left:67px; top:62px; width:90px; font-size:24px; text-align:right; color:var(--grey)">0.322</p>
+<div style="position:absolute; left:278px; top:124px; width:28px; height:28px; border-radius:14px; background:#8E8E93"></div>
+<p style="position:absolute; left:176px; top:122px; width:90px; font-size:24px; text-align:right; color:var(--grey)">0.335</p>
+<div style="position:absolute; left:436px; top:184px; width:28px; height:28px; border-radius:14px; background:#8E8E93"></div>
+<p style="position:absolute; left:476px; top:182px; width:90px; font-size:24px; color:var(--grey)">0.354</p>
+<div style="position:absolute; left:578px; top:244px; width:28px; height:28px; border-radius:14px; background:var(--accent)"></div>
+<p style="position:absolute; left:476px; top:242px; width:90px; font-size:24px; text-align:right; color:var(--grey)">0.371</p>
+<div style="position:absolute; left:686px; top:304px; width:28px; height:28px; border-radius:14px; background:var(--accent)"></div>
+<p style="position:absolute; left:584px; top:302px; width:90px; font-size:24px; text-align:right; color:var(--grey)">0.384</p>
+<div style="position:absolute; left:794px; top:364px; width:28px; height:28px; border-radius:14px; background:var(--accent)"></div>
+<p style="position:absolute; left:692px; top:362px; width:90px; font-size:24px; text-align:right; color:var(--grey)">0.397</p>
+<div style="position:absolute; left:853px; top:424px; width:28px; height:28px; border-radius:14px; background:var(--accent)"></div>
+<p style="position:absolute; left:893px; top:422px; width:90px; font-size:24px; color:var(--grey)">0.404</p>
+</div>
+</div>
+<div class="notes">
+<p class="note"><span class="tag">Stand-alone metrics (grey)</span><br>Not significantly different from random selection.</p>
+<p class="note"><span class="tag">Consensus metrics (blue)</span><br>Better than random. Not better than Isolation Forest.</p>
+</div>
+<aside>Ma, Zhao, Zhang and Akoglu, SIGKDD Explorations 2023. 297 models from 8 detector families, 39 datasets, one-sided paired Wilcoxon tests. Random is the mean over all 297 models (AP 0.342). The iForest baseline is the mean over 81 randomly configured Isolation Forests (AP 0.399), which ranks like the 84th best model. Cluster indices are Xie–Beni, R-squared and Calinski–Harabasz, which select the same models. IREOS took more than 16 days on the largest dataset.</aside>
+</section>

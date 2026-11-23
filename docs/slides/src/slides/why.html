@@ -1,0 +1,11 @@
+<section id="why">
+<h2>Why they fail</h2>
+<div class="rows">
+<div class="r"><p class="a">No anomalies</p><p class="b">Normal data cannot show what a detector misses.</p></div>
+<div class="r"><p class="a">Wrong proxy</p><p class="b">Uniform or generated points are not real anomalies.</p></div>
+<div class="r"><p class="a">Self-grading</p><p class="b">Top-score metrics reward confidence, not correctness.</p></div>
+<div class="r"><p class="a">Incomparable scores</p><p class="b">Different detectors score on different scales.</p></div>
+<div class="r" style="border-bottom:2px solid var(--line)"><p class="a">Correlated pool</p><p class="b">Consensus recovers what a default already gives.</p></div>
+</div>
+<aside>Normal data only constrain how a detector treats normal points. Reference and generated points stand in for anomalies but need not resemble them. Metrics that read the top scores grade the detector against its own output. Raw scores from different detector types are not on a common scale. Consensus can only recover the majority view of the pool.</aside>
+</section>
