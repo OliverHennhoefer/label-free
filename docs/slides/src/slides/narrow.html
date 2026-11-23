@@ -1,0 +1,8 @@
+<section id="narrow">
+<h2>Normal data only: small tests, mixed results.</h2>
+<div class="fig" style="align-items:flex-start; padding-top:96px">
+<div class="stat"><p class="big">28 / 36</p><p class="d">detector pairs ranked as ROC AUC ranks them, by Excess-Mass.<br>Normal-only training, three detectors, twelve datasets. Goix, 2016.</p></div>
+<div class="stat"><p class="big">84 <span style="color:var(--grey)">vs</span> 75</p><p class="d">mean ROC AUC of a one-class SVM tuned with NPD versus a random setting, 38 datasets. No gain for DeepSVDD. Dai &amp; Fan, 2025.</p></div>
+</div>
+<aside>Goix: EM agrees with ROC on 28 of 36 pairwise comparisons in the novelty setting, MV on about 75%, but with only three detectors. AutoUAD: NPD-tuned OCSVM reaches 84.0 against 74.7 for a random configuration and 85.8 for the oracle; for DeepSVDD, 74.4 against 74.5. Tuning one detector is a narrower problem than choosing among detector families.</aside>
+</section>

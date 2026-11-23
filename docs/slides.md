@@ -12,3 +12,6 @@ separation, feature-space isolation, separability), each with a single figure, t
 and when it fails. The second half summarizes the studies that tested these metrics
 against held-back labels, led by Ma et al. (SIGKDD Explorations, 2023), and
 closes with practical advice.
+
+The deck's source is in [`docs/slides/src`](https://github.com/OliverHennhoefer/label-free/tree/main/docs/slides/src);
+`build.py` there explains how to rebuild the PDF.
